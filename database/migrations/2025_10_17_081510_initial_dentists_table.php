@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('dentist_mname');
             $table->string('dentist_lname');
             $table->integer('specialization');
-            $table->string('contact_number')->unique();;
+            $table->string('contact_number')->unique();
             $table->string('email')->unique();
             $table->timestamps();
         });

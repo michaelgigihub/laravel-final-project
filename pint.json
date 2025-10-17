@@ -1,0 +1,9 @@
+{
+    "preset": "laravel",
+    "rules": {
+        "single_quote": {
+            "strings_containing_single_quote_chars": false
+        }
+    },
+    "exclude": ["vendor"]
+}

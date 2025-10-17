@@ -15,5 +15,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('dentists', [App\Http\Controllers\DentistController::class, 'index'])->name('dentists.index');
 });
 
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';
