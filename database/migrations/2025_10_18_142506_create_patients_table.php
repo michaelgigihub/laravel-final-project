@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('dentists', function (Blueprint $table) {
-            $table->id('dentist_id');
-            $table->string('dentist_fname');
-            $table->string('dentist_mname')->nullable();
-            $table->string('dentist_lname');
-            $table->integer('specialization');
+        Schema::create('patients', function (Blueprint $table) {
+            $table->id('patient_id');
+            $table->string('patient_fname');
+            $table->string('patient_mname')->nullable();
+            $table->string('patient_lname');
+            $table->date('date_of_birth');
+            $table->string('gender');
             $table->string('contact_number')->unique();
             $table->string('email')->unique();
+            $table->string('address');
             $table->timestamps();
         });
     }
@@ -28,6 +30,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('dentists');
+        Schema::dropIfExists('patients');
     }
 };
