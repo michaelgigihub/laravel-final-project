@@ -14,7 +14,7 @@ class DentistSeeder extends Seeder
     {
         Dentist::create([
             'dentist_fname' => 'John',
-            'dentist_mname' => 'A.',
+            'dentist_mname' => 'Alo',
             'dentist_lname' => 'Doe',
             'specialization' => 1, // Assuming 1 is for General Dentistry
             'contact_number' => '123-456-7890',
@@ -23,7 +23,7 @@ class DentistSeeder extends Seeder
 
         Dentist::create([
             'dentist_fname' => 'Jane',
-            'dentist_mname' => 'B.',
+            'dentist_mname' => 'Baba',
             'dentist_lname' => 'Smith',
             'specialization' => 2, // Assuming 2 is for Orthodontics
             'contact_number' => '098-765-4321',
