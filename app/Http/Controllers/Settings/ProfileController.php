@@ -29,7 +29,23 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        $data = $request->validated();
+
+        // Map 'name' (single string) to fname/mname/lname used by the User model
+        if (!empty($data['name'])) {
+            $parts = preg_split('/\s+/', trim($data['name']));
+            $fname = array_shift($parts) ?: '';
+            $lname = count($parts) ? array_pop($parts) : '';
+            $mname = count($parts) ? implode(' ', $parts) : null;
+
+            $data['fname'] = $fname;
+            $data['mname'] = $mname;
+            $data['lname'] = $lname;
+
+            unset($data['name']);
+        }
+
+        $request->user()->fill($data);
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;

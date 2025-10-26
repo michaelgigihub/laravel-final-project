@@ -22,6 +22,7 @@ class User extends Authenticatable
         'fname',
         'mname',
         'lname',
+        'gender',
         'role_id',
         'email',
         'password',
@@ -37,6 +38,18 @@ class User extends Authenticatable
         'two_factor_secret',
         'two_factor_recovery_codes',
         'remember_token',
+    ];
+
+    /**
+     * The accessors to append to the model's array form.
+     *
+     * Ensures computed attributes like `name` are included when the model
+     * is serialized to JSON and shared with the frontend (e.g., Inertia).
+     *
+     * @var list<string>
+     */
+    protected $appends = [
+        'name',
     ];
 
     /**
