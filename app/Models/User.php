@@ -26,8 +26,11 @@ class User extends Authenticatable implements MustVerifyEmail
         'lname',
         'gender',
         'role_id',
+        'contact_number',
         'email',
         'password',
+        'must_change_password',
+        'email_verified_at',
     ];
 
     /**
@@ -102,5 +105,50 @@ class User extends Authenticatable implements MustVerifyEmail
         return $query->whereHas('role', function ($q) {
             $q->where('name', 'Dentist');
         });
+    }
+
+    /**
+     * Get the role relationship.
+     */
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    /**
+     * Get the dentist profile (if user is a dentist).
+     */
+    public function dentistProfile()
+    {
+        return $this->hasOne(DentistProfile::class, 'dentist_id');
+    }
+
+    /**
+     * Get the specializations (if user is a dentist).
+     */
+    public function specializations()
+    {
+        return $this->belongsToMany(
+            Specialization::class,
+            'dentist_specialization',
+            'dentist_id',
+            'specialization_id'
+        )->withTimestamps();
+    }
+
+    /**
+     * Check if user is an admin.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role_id === 1;
+    }
+
+    /**
+     * Check if user is a dentist.
+     */
+    public function isDentist(): bool
+    {
+        return $this->role_id === 2;
     }
 }
