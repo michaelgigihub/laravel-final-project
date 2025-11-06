@@ -22,6 +22,18 @@ This repository is a Laravel (server) + Inertia + React (frontend) application. 
 - Frontend entry: `resources/js/app.tsx` (or `resources/js` index) and `vite.config.ts` — how React pages are wired into Laravel with Vite.
 - Tests: `tests/` — this project uses Pest (see `composer.json` and `phpunit.xml`).
 
+### Frontend structure (resources/js/)
+
+```text
+resources/js/
+├── components/    # Reusable React components
+├── hooks/         # React hooks
+├── layouts/       # Application layouts
+├── lib/           # Utility functions and configuration
+├── pages/         # Page components
+└── types/         # TypeScript definitions
+```
+
 ## Common developer tasks (commands)
 
 Environment & dependencies
@@ -167,3 +179,4 @@ If anything here is missing or you'd like more examples (e.g., one controller ->
 
 - Do NOT create new Markdown documentation files (e.g., `.md`, `.markdown`) automatically after giving a response. Only generate or add documentation files when explicitly instructed to do so by a human reviewer. You may update or edit existing docs if asked, but avoid creating standalone docs as part of routine code edits or example responses.
 - Do NOT run formatting or linting commands automatically (e.g., `npm run format`, `npm run lint`, `vendor\bin\pint`). Only run these if explicitly requested by the user.
+- Do NOT add emojis in generated comments, commit messages, PR descriptions, or inline code comments produced by the AI. Use plain, professional text only.

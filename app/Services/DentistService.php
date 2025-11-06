@@ -4,11 +4,10 @@ namespace App\Services;
 
 use App\Enums\AuditModuleType;
 use App\Enums\AuditTargetType;
-use App\Mail\DentistCredentials;
+use App\Jobs\SendDentistCredentials;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Mail;
 
 class DentistService
 {
@@ -35,7 +34,7 @@ class DentistService
         $digits = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
 
         // Construct the password
-        $password = $normalizedLastName.'_'.$digits;
+        $password = $normalizedLastName . '_' . $digits;
 
         return [
             'password' => $password,
@@ -103,14 +102,12 @@ class DentistService
 
             DB::commit();
 
-            // Send credentials email
-            $dentistFullName = trim($dentist->fname.' '.($dentist->mname ? $dentist->mname.' ' : '').$dentist->lname);
-            Mail::to($dentist->email)->send(
-                new DentistCredentials(
-                    $dentistFullName,
-                    $dentist->email,
-                    $passwordData['digits']
-                )
+            // Dispatch job to send credentials email asynchronously
+            $dentistFullName = trim($dentist->fname . ' ' . ($dentist->mname ? $dentist->mname . ' ' : '') . $dentist->lname);
+            SendDentistCredentials::dispatch(
+                $dentist->email,
+                $dentistFullName,
+                $passwordData['digits']
             );
 
             // Reload with relationships
