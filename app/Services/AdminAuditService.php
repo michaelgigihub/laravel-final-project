@@ -11,17 +11,16 @@ class AdminAuditService
     /**
      * Log admin activity to the admin_audit table.
      *
-     * @param int $adminId The ID of the admin performing the action
-     * @param string $activityTitle Short title of the activity (e.g., 'Dentist Created', 'Patient Updated')
-     * @param string $message Detailed message describing the action
-     * @param AuditModuleType $moduleType The module where the action occurred
-     * @param AuditTargetType|null $targetType Type of the target entity (optional)
-     * @param int|null $targetId ID of the target entity (optional)
-     * @param array|null $oldValue Previous state of the entity (optional)
-     * @param array|null $newValue New state of the entity (optional)
-     * @param string|null $ipAddress IP address of the admin (optional)
-     * @param string|null $userAgent User agent string (optional)
-     * @return void
+     * @param  int  $adminId  The ID of the admin performing the action
+     * @param  string  $activityTitle  Short title of the activity (e.g., 'Dentist Created', 'Patient Updated')
+     * @param  string  $message  Detailed message describing the action
+     * @param  AuditModuleType  $moduleType  The module where the action occurred
+     * @param  AuditTargetType|null  $targetType  Type of the target entity (optional)
+     * @param  int|null  $targetId  ID of the target entity (optional)
+     * @param  array|null  $oldValue  Previous state of the entity (optional)
+     * @param  array|null  $newValue  New state of the entity (optional)
+     * @param  string|null  $ipAddress  IP address of the admin (optional)
+     * @param  string|null  $userAgent  User agent string (optional)
      */
     public function log(
         int $adminId,

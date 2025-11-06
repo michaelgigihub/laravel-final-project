@@ -1,14 +1,14 @@
 <?php
 
-use App\Models\User;
+use App\Mail\DentistCredentials;
 use App\Models\Role;
 use App\Models\Specialization;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\UploadedFile;
-use App\Mail\DentistCredentials;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 uses(RefreshDatabase::class);
 
@@ -61,12 +61,11 @@ test('dentist index page displays all dentists', function () {
     $dentist->specializations()->attach([$this->specialization1->id, $this->specialization2->id]);
 
     // Visit the dentists index page
-    $response = $this->get('/dentists');
+    $response = $this->get('/admin/dentists');
 
     $response->assertStatus(200);
     $response->assertInertia(
-        fn($page) =>
-        $page->component('DentistsTable')
+        fn($page) => $page->component('DentistsTable')
             ->has('dentists', 1)
             ->where('dentists.0.dentist_id', $dentist->id)
             ->where('dentists.0.fname', 'John')
@@ -111,12 +110,11 @@ test('dentist index shows only users with dentist role', function () {
         'gender' => 'Female',
     ]);
 
-    $response = $this->get('/dentists');
+    $response = $this->get('/admin/dentists');
 
     $response->assertStatus(200);
     $response->assertInertia(
-        fn($page) =>
-        $page->component('DentistsTable')
+        fn($page) => $page->component('DentistsTable')
             ->has('dentists', 1) // Only 1 dentist, not the regular user
             ->where('dentists.0.email', 'dentist@example.com')
     );
@@ -125,12 +123,11 @@ test('dentist index shows only users with dentist role', function () {
 test('admin can access dentist registration form', function () {
     $this->actingAs($this->admin);
 
-    $response = $this->get('/dentists/create');
+    $response = $this->get('/admin/dentists/create');
 
     $response->assertStatus(200);
     $response->assertInertia(
-        fn($page) =>
-        $page->component('RegisterDentist')
+        fn($page) => $page->component('RegisterDentist')
             ->has('specializations')
     );
 });
@@ -151,9 +148,9 @@ test('admin can create a new dentist', function () {
         'hire_date' => now()->toDateString(),
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
-    $response->assertRedirect('/dentists');
+    $response->assertRedirect('/admin/dentists');
     $response->assertSessionHas('success', 'Dentist registered successfully.');
 
     // Verify dentist was created
@@ -195,7 +192,7 @@ test('admin can create a new dentist', function () {
 test('dentist creation requires valid data', function () {
     $this->actingAs($this->admin);
 
-    $response = $this->post('/dentists', [
+    $response = $this->post('/admin/dentists', [
         'fname' => '', // Required field missing
         'email' => 'invalid-email', // Invalid email
     ]);
@@ -217,7 +214,7 @@ test('dentist email must be unique', function () {
     ]);
 
     // Try to create another dentist with same email
-    $response = $this->post('/dentists', [
+    $response = $this->post('/admin/dentists', [
         'fname' => 'New',
         'lname' => 'Dentist',
         'email' => 'existing@example.com', // Duplicate email
@@ -239,9 +236,9 @@ test('dentist creation with multiple specializations', function () {
         'specialization_ids' => [$this->specialization1->id, $this->specialization2->id],
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
-    $response->assertRedirect('/dentists');
+    $response->assertRedirect('/admin/dentists');
 
     $dentist = User::where('email', 'multi@example.com')->first();
 
@@ -270,7 +267,7 @@ test('dentist creation sets must_change_password flag', function () {
         'gender' => 'Male',
     ];
 
-    $this->post('/dentists', $dentistData);
+    $this->post('/admin/dentists', $dentistData);
 
     $dentist = User::where('email', 'newdoc@example.com')->first();
 
@@ -291,9 +288,9 @@ test('dentist without specializations can be created', function () {
         // No specialization_ids
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
-    $response->assertRedirect('/dentists');
+    $response->assertRedirect('/admin/dentists');
 
     $dentist = User::where('email', 'nospec@example.com')->first();
 
@@ -317,9 +314,9 @@ test('admin can create dentist with avatar', function () {
         'avatar' => $avatar,
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
-    $response->assertRedirect('/dentists');
+    $response->assertRedirect('/admin/dentists');
 
     $dentist = User::where('email', 'avatar@example.com')->first();
 
@@ -345,7 +342,7 @@ test('dentist avatar must be valid image file', function () {
         'avatar' => $invalidFile,
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
     $response->assertSessionHasErrors(['avatar']);
 });
@@ -364,7 +361,7 @@ test('dentist avatar file size must not exceed 2MB', function () {
         'avatar' => $largeFile,
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
     $response->assertSessionHasErrors(['avatar']);
 });
@@ -381,9 +378,9 @@ test('dentist can be created without avatar', function () {
         // No avatar provided
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
-    $response->assertRedirect('/dentists');
+    $response->assertRedirect('/admin/dentists');
 
     $dentist = User::where('email', 'no-avatar@example.com')->first();
 
@@ -402,7 +399,7 @@ test('password is auto-generated with correct format', function () {
         'gender' => 'Male',
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
     $dentist = User::where('email', 'testpass@example.com')->first();
 
@@ -427,7 +424,7 @@ test('password generation handles compound last names correctly', function () {
         'gender' => 'Female',
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
     $dentist = User::where('email', 'delacruz@example.com')->first();
 
@@ -451,7 +448,7 @@ test('email contains only password digits not full password', function () {
         'gender' => 'Male',
     ];
 
-    $response = $this->post('/dentists', $dentistData);
+    $response = $this->post('/admin/dentists', $dentistData);
 
     $dentist = User::where('email', 'security@example.com')->first();
 
@@ -461,7 +458,7 @@ test('email contains only password digits not full password', function () {
         return $mail->hasTo($dentist->email) &&
             strlen($mail->passwordDigits) === 4 &&
             is_numeric($mail->passwordDigits) &&
-            !str_contains($mail->passwordDigits, 'test'); // Should not contain lastname
+            ! str_contains($mail->passwordDigits, 'test'); // Should not contain lastname
     });
 });
 
@@ -490,18 +487,19 @@ test('admin can view a specific dentist', function () {
 
     $dentist->specializations()->attach([$this->specialization1->id]);
 
-    $response = $this->get("/dentists/{$dentist->id}");
+    $response = $this->get("/admin/dentists/{$dentist->id}");
 
     $response->assertStatus(200);
     $response->assertInertia(
-        fn($page) =>
-        $page->component('ViewDentist')
+        fn($page) => $page->component('dentist/profile')
             ->has('dentist')
+            ->has('viewMode')
+            ->where('viewMode', 'admin')
             ->where('dentist.id', $dentist->id)
             ->where('dentist.fname', 'View')
             ->where('dentist.mname', 'Test')
             ->where('dentist.lname', 'Dentist')
-            ->where('dentist.full_name', 'View Test Dentist')
+            ->where('dentist.name', 'View Test Dentist')
             ->where('dentist.gender', 'Female')
             ->where('dentist.email', 'view.dentist@example.com')
             ->where('dentist.contact_number', '1112223333')
@@ -515,7 +513,7 @@ test('viewing non-dentist user returns 404', function () {
     $this->actingAs($this->admin);
 
     // Try to view the admin user (role_id = 1, not a dentist)
-    $response = $this->get("/dentists/{$this->admin->id}");
+    $response = $this->get("/admin/dentists/{$this->admin->id}");
 
     $response->assertStatus(404);
 });
@@ -523,7 +521,7 @@ test('viewing non-dentist user returns 404', function () {
 test('viewing non-existent dentist returns 404', function () {
     $this->actingAs($this->admin);
 
-    $response = $this->get('/dentists/99999');
+    $response = $this->get('/admin/dentists/99999');
 
     $response->assertStatus(404);
 });

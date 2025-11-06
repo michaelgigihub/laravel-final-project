@@ -20,7 +20,7 @@ class EnsurePasswordChanged
         $user = $request->user();
 
         // Skip if user is not authenticated
-        if (!$user) {
+        if (! $user) {
             return $next($request);
         }
 

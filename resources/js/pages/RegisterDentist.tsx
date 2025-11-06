@@ -83,7 +83,7 @@ export default function RegisterDentist({
             submitData.append(`specialization_ids[${index}]`, id.toString());
         });
 
-        router.post('/dentists', submitData, {
+        router.post('/admin/dentists', submitData, {
             preserveScroll: true,
             onSuccess: () => {
                 alert(
@@ -339,7 +339,7 @@ export default function RegisterDentist({
                     <button type="submit">Register Dentist</button>
                     <button
                         type="button"
-                        onClick={() => router.visit('/dentists')}
+                        onClick={() => router.visit('/admin/dentists')}
                     >
                         Cancel
                     </button>

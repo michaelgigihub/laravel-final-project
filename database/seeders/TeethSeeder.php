@@ -18,7 +18,7 @@ class TeethSeeder extends Seeder
         for ($i = 1; $i <= 32; $i++) {
             $rows[] = [
                 'id' => $i,
-                'name' => 'Tooth ' . $i,
+                'name' => 'Tooth '.$i,
                 'created_at' => $now,
                 'updated_at' => $now,
             ];

@@ -59,28 +59,6 @@ export interface Dentist {
     hire_date: string | null;
 }
 
-export interface DentistDetail {
-    id: number;
-    fname: string;
-    mname: string | null;
-    lname: string;
-    full_name: string;
-    gender: string;
-    email: string;
-    contact_number: string | null;
-    avatar_path: string | null;
-    avatar_url: string | null;
-    specializations: Specialization[];
-    employment_status: string | null;
-    hire_date: string | null;
-    hire_date_formatted: string | null;
-    archived_at: string | null;
-    created_at: string;
-    created_at_formatted: string;
-    email_verified_at: string | null;
-    must_change_password: boolean;
-}
-
 export interface DentistFormData {
     fname: string;
     mname: string;
@@ -103,8 +81,33 @@ export interface RegisterDentistProps {
     errors?: Record<string, string>;
 }
 
-export interface ViewDentistProps {
-    dentist: DentistDetail;
+export interface DentistProfileProps {
+    dentist: {
+        id: number;
+        fname: string;
+        mname: string | null;
+        lname: string;
+        name: string;
+        gender: string;
+        email: string;
+        contact_number: string | null;
+        avatar_path: string | null;
+        avatar_url: string | null;
+        email_verified_at: string | null;
+        role: {
+            id: number;
+            name: string;
+        } | null;
+        specializations: Specialization[];
+        employment_status: string | null;
+        hire_date: string | null;
+        hire_date_formatted: string | null;
+        archived_at?: string | null;
+        created_at?: string;
+        created_at_formatted?: string;
+        must_change_password?: boolean;
+    };
+    viewMode: 'self' | 'admin';
 }
 
 export interface ChangePasswordProps {

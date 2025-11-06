@@ -16,8 +16,6 @@ enum AuditModuleType: string
 
     /**
      * Get all available module types as an array.
-     *
-     * @return array
      */
     public static function values(): array
     {
@@ -26,8 +24,6 @@ enum AuditModuleType: string
 
     /**
      * Get module type label for display.
-     *
-     * @return string
      */
     public function label(): string
     {

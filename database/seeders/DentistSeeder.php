@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
 
 class DentistSeeder extends Seeder
 {
@@ -15,7 +15,7 @@ class DentistSeeder extends Seeder
     {
         // Link the already seeded dentist user to a profile and specializations
         $dentist = User::where('email', 'dentist@example.com')->first();
-        if (!$dentist) {
+        if (! $dentist) {
             return; // ensure idempotency even if user seeder wasn't run
         }
 

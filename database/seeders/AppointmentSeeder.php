@@ -2,9 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use App\Models\User;
 
 class AppointmentSeeder extends Seeder
 {
@@ -16,7 +16,7 @@ class AppointmentSeeder extends Seeder
         // Find a patient and a dentist user
         $patient = DB::table('patients')->orderBy('id')->first();
         $dentistUser = User::where('email', 'dentist@example.com')->first();
-        if (!$patient || !$dentistUser) {
+        if (! $patient || ! $dentistUser) {
             return; // skip if prerequisites missing
         }
 

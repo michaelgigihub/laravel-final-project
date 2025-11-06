@@ -4,8 +4,6 @@ namespace App\Models;
 
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
@@ -56,6 +54,7 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $appends = [
         'name',
+        'avatar_url',
     ];
 
     /**
@@ -80,6 +79,14 @@ class User extends Authenticatable implements MustVerifyEmail
         $parts = array_filter([$this->fname ?? null, $this->mname ?? null, $this->lname ?? null]);
 
         return implode(' ', $parts);
+    }
+
+    /**
+     * Get the avatar URL.
+     */
+    public function getAvatarUrlAttribute(): ?string
+    {
+        return $this->avatar_path ? asset('storage/' . $this->avatar_path) : null;
     }
 
     /**

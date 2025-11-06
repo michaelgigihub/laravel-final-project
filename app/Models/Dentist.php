@@ -14,7 +14,7 @@ class Dentist extends Model
         'specialization',
     ];
 
-        public function specialization()
+    public function specialization()
     {
         return $this->belongsTo(Specialization::class, 'specialization_id', 'specialization_id');
     }

@@ -37,7 +37,7 @@ class RegisteredUserController extends Controller
             'fname' => 'nullable|string|max:255',
             'mname' => 'nullable|string|max:255',
             'lname' => 'nullable|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:' . User::class,
+            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
         Log::info('Registration validated', ['payload' => array_keys($validated)]);
@@ -47,7 +47,7 @@ class RegisteredUserController extends Controller
         $mname = $validated['mname'] ?? null;
         $lname = $validated['lname'] ?? null;
 
-        if ((!$fname || !$lname) && !empty($validated['name'])) {
+        if ((! $fname || ! $lname) && ! empty($validated['name'])) {
             $parts = preg_split('/\s+/', trim($validated['name']));
             $fname = $fname ?: array_shift($parts);
             $lname = $lname ?: (count($parts) ? array_pop($parts) : null);

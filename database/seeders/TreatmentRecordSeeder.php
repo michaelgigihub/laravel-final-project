@@ -16,7 +16,7 @@ class TreatmentRecordSeeder extends Seeder
         $appointment = DB::table('appointments')->orderBy('id')->first();
         $treatmentType = DB::table('treatment_types')->orderBy('id')->first();
 
-        if (!$appointment || !$treatmentType) {
+        if (! $appointment || ! $treatmentType) {
             return; // Skip if prerequisites are missing
         }
 

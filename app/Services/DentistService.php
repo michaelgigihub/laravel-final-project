@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Mail\DentistCredentials;
 use App\Enums\AuditModuleType;
 use App\Enums\AuditTargetType;
+use App\Mail\DentistCredentials;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -24,7 +24,6 @@ class DentistService
      * Format: lastname_{4 random digits}
      * Handles compound last names (e.g., "dela cruz" -> "delacruz")
      *
-     * @param string $lastName
      * @return array ['password' => full password, 'digits' => 4 digits only]
      */
     private function generateDefaultPassword(string $lastName): array
@@ -36,7 +35,7 @@ class DentistService
         $digits = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
 
         // Construct the password
-        $password = $normalizedLastName . '_' . $digits;
+        $password = $normalizedLastName.'_'.$digits;
 
         return [
             'password' => $password,
@@ -47,8 +46,8 @@ class DentistService
     /**
      * Create a new dentist with profile and specializations.
      *
-     * @param array $validated Validated data
-     * @return User
+     * @param  array  $validated  Validated data
+     *
      * @throws \Exception
      */
     public function createDentist(array $validated): User
@@ -91,7 +90,7 @@ class DentistService
             ]);
 
             // Attach specializations if provided
-            if (!empty($validated['specialization_ids'])) {
+            if (! empty($validated['specialization_ids'])) {
                 foreach ($validated['specialization_ids'] as $specializationId) {
                     DB::table('dentist_specialization')->insert([
                         'dentist_id' => $dentist->id,
@@ -105,7 +104,7 @@ class DentistService
             DB::commit();
 
             // Send credentials email
-            $dentistFullName = trim($dentist->fname . ' ' . ($dentist->mname ? $dentist->mname . ' ' : '') . $dentist->lname);
+            $dentistFullName = trim($dentist->fname.' '.($dentist->mname ? $dentist->mname.' ' : '').$dentist->lname);
             Mail::to($dentist->email)->send(
                 new DentistCredentials(
                     $dentistFullName,
@@ -125,9 +124,6 @@ class DentistService
     /**
      * Update an existing dentist.
      *
-     * @param User $dentist
-     * @param array $validated
-     * @return User
      * @throws \Exception
      */
     public function updateDentist(User $dentist, array $validated): User
@@ -175,8 +171,6 @@ class DentistService
     /**
      * Delete a dentist and related records.
      *
-     * @param User $dentist
-     * @return void
      * @throws \Exception
      */
     public function deleteDentist(User $dentist): void
@@ -199,10 +193,6 @@ class DentistService
 
     /**
      * Log dentist creation activity.
-     *
-     * @param int $adminId
-     * @param User $dentist
-     * @return void
      */
     public function logDentistCreated(int $adminId, User $dentist): void
     {
@@ -223,12 +213,6 @@ class DentistService
 
     /**
      * Log dentist update activity.
-     *
-     * @param int $adminId
-     * @param User $dentist
-     * @param array $oldData
-     * @param array $newData
-     * @return void
      */
     public function logDentistUpdated(int $adminId, User $dentist, array $oldData, array $newData): void
     {
@@ -246,10 +230,6 @@ class DentistService
 
     /**
      * Log dentist deletion activity.
-     *
-     * @param int $adminId
-     * @param User $dentist
-     * @return void
      */
     public function logDentistDeleted(int $adminId, User $dentist): void
     {

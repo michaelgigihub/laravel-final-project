@@ -22,6 +22,23 @@ class DentistProfile extends Model
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var list<string>
+     */
+    protected $appends = [
+        'hire_date_formatted',
+    ];
+
+    /**
+     * Get formatted hire date.
+     */
+    public function getHireDateFormattedAttribute(): ?string
+    {
+        return $this->hire_date?->format('F d, Y');
+    }
+
+    /**
      * Get the dentist user.
      */
     public function dentist()

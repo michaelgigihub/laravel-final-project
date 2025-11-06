@@ -1,10 +1,11 @@
 
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PatientController;
-use App\Http\Controllers\DentistController;
+use App\Http\Controllers\AdminController;
 use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\DentistController;
+use App\Http\Controllers\PatientController;
+use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 // API routes for React frontend
@@ -29,12 +30,17 @@ Route::middleware(['auth', 'verified', 'password.changed'])->group(function () {
 });
 
 // Admin-only routes for dentist management
-Route::middleware(['auth', 'verified', 'password.changed', 'role:1'])->group(function () {
-    Route::get('/dentists', [DentistController::class, 'index'])->name('dentists.index');
-    Route::get('/dentists/create', [DentistController::class, 'create'])->name('dentists.create');
-    Route::post('/dentists', [DentistController::class, 'store'])->name('dentists.store');
-    Route::get('/dentists/{dentist}', [DentistController::class, 'show'])->name('dentists.show');
+Route::middleware(['auth', 'verified', 'password.changed', 'role:1'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/dentists', [AdminController::class, 'indexDentists'])->name('dentists.index');
+    Route::get('/dentists/create', [AdminController::class, 'createDentist'])->name('dentists.create');
+    Route::post('/dentists', [AdminController::class, 'storeDentist'])->name('dentists.store');
+    Route::get('/dentists/{dentist}', [AdminController::class, 'showDentist'])->name('dentists.show');
 });
 
-require __DIR__ . '/settings.php';
-require __DIR__ . '/auth.php';
+// Dentist-only routes
+Route::middleware(['auth', 'verified', 'password.changed', 'role:2'])->prefix('dentist')->name('dentist.')->group(function () {
+    Route::get('/profile', [DentistController::class, 'profile'])->name('profile');
+});
+
+require __DIR__.'/settings.php';
+require __DIR__.'/auth.php';

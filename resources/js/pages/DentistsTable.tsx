@@ -19,7 +19,7 @@ export default function DentistsTable({ dentists }: DentistsTableProps) {
             header: 'Actions',
             cell: ({ row }: { row: { original: Dentist } }) => (
                 <Link
-                    href={`/dentists/${row.original.dentist_id}`}
+                    href={`/admin/dentists/${row.original.dentist_id}`}
                     className="text-blue-600 underline hover:text-blue-800"
                 >
                     View
@@ -34,7 +34,7 @@ export default function DentistsTable({ dentists }: DentistsTableProps) {
                 <h1 className="text-2xl font-bold">Dentists</h1>
                 <div className="flex items-center gap-4">
                     <button
-                        onClick={() => router.visit('/dentists/create')}
+                        onClick={() => router.visit('/admin/dentists/create')}
                         type="button"
                     >
                         + Register New Dentist

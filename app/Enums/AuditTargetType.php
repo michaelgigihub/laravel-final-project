@@ -18,8 +18,6 @@ enum AuditTargetType: string
 
     /**
      * Get all available target types as an array.
-     *
-     * @return array
      */
     public static function values(): array
     {
@@ -28,8 +26,6 @@ enum AuditTargetType: string
 
     /**
      * Get target type label for display.
-     *
-     * @return string
      */
     public function label(): string
     {

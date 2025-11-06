@@ -55,15 +55,15 @@ return new class extends Migration
         Schema::create('admin_audit', function (Blueprint $table) {
             $table->id();
             $table->foreignId('admin_id')->constrained('users')->restrictOnDelete();
-            $table->string('activityTitle'); // "Login Success", "Update Employee", "User created" label 
-            $table->string('moduleType'); //"auth", "user-management" filter
+            $table->string('activityTitle'); // "Login Success", "Update Employee", "User created" label
+            $table->string('moduleType'); // "auth", "user-management" filter
             $table->text('message'); // Admin updated employee salary
             $table->string('targetType')->nullable(); // "user-verification under user-management" affected entity
             $table->string('targetId')->nullable(); // Dentist ID 123
-            $table->json('oldValue')->nullable(); //{ "salary": 30000 }
-            $table->json('newValue')->nullable(); //{ "salary": 50000 }
+            $table->json('oldValue')->nullable(); // { "salary": 30000 }
+            $table->json('newValue')->nullable(); // { "salary": 50000 }
             $table->string('ipAddress')->nullable();
-            $table->string('userAgent')->nullable(); //Chrome on Windows
+            $table->string('userAgent')->nullable(); // Chrome on Windows
             $table->timestamps();
 
             // Helpful indexes for dashboard filters
