@@ -80,7 +80,7 @@ export default function MouseTrackingEyes() {
                             transform: `translate(${eyePositions.left.x}px, ${eyePositions.left.y}px)`,
                         }}
                     >
-                        <div className="absolute right-2 top-2 h-3 w-3 rounded-full bg-white opacity-80" />
+                        <div className="absolute right-2 top-2 h-3 w-3 rounded-full bg-white" />
                     </div>
                 </div>
 
@@ -96,7 +96,7 @@ export default function MouseTrackingEyes() {
                             transform: `translate(${eyePositions.right.x}px, ${eyePositions.right.y}px)`,
                         }}
                     >
-                        <div className="absolute right-2 top-2 h-3 w-3 rounded-full bg-white opacity-80" />
+                        <div className="absolute right-2 top-2 h-3 w-3 rounded-full bg-white" />
                     </div>
                 </div>
             </div>
