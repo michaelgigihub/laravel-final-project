@@ -105,21 +105,27 @@ export default function Welcome() {
 
     return (
         <>
-            <Head title="Welcome">
+            <Head>
                 <link rel="preconnect" href="https://fonts.bunny.net" />
                 <link
-                    href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap"
+                    href="https://fonts.bunny.net/css?family=inter:400,500,600,700|playfair-display:400,400i&display=swap"
+                    rel="stylesheet"
+                />
+                <link
+                    href="https://api.fontshare.com/v2/css?f[]=clash-display@600&display=swap"
                     rel="stylesheet"
                 />
             </Head>
             <div className="relative bg-brand-dark">
                 {/* Navigation */}
-                <nav className="fixed top-0 left-0 right-0 z-50 mx-auto flex items-center justify-between px-8 py-6 lg:px-16" style={{ backgroundColor: 'rgba(38, 41, 47, 0.95)', backdropFilter: 'blur(10px)' }}>
+                <nav className="fixed top-0 left-0 right-0 z-50 mx-auto flex items-center justify-between px-8 py-6 lg:px-16">
                     <div className="flex items-center gap-2">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-brand-light">
-                            <div className="text-xl font-bold text-brand-dark">icon</div>
-                        </div>
-                        <span className="text-xl font-semibold text-brand-light">
+                        <img
+                            src="/BlueTooth-logo.svg"
+                            alt="BlueTooth Logo"
+                            className="h-10 w-10 logo-brand-light"
+                        />
+                        <span className="text-xl text-brand-light" style={{ fontFamily: 'Clash Display, sans-serif', fontWeight: 600 }}>
                             {name || 'BlueTooth'}
                         </span>
                     </div>
@@ -195,72 +201,98 @@ export default function Welcome() {
                 {/* Main Container */}
                 <div
                     ref={heroWrapperRef}
-                    className="fixed left-0 right-0 top-0 min-h-screen p-6 pt-20 lg:p-12 lg:pt-28"
+                    className="fixed left-0 right-0 top-4 min-h-screen p-6 pt-16 lg:p-12 lg:pt-20"
                 >
                     <div className="relative mx-auto h-full min-h-[calc(100vh-12rem)] rounded-[12px] bg-brand-light lg:min-h-[calc(100vh-14rem)] lg:rounded-[24px]">
                         {/* Hero Section */}
-                        <main className="relative z-10 px-8 pb-12 pt-12 lg:px-16 lg:pb-16 lg:pt-16">
+                        <main className="relative z-10 px-8 pb-10 pt-10 lg:px-16 lg:pb-14 lg:pt-14">
                             {/* Hero Content */}
-                            <div className="mb-16 flex flex-col items-center justify-between gap-8 lg:flex-row">
-                                <div className="max-w-3xl space-y-6">
-                                    <h1 className="font-display text-5xl font-bold leading-tight text-brand-dark lg:text-7xl">
-                                        Your dream{' '}
-                                        <span className="relative inline-block">
-                                            <span className="relative z-10">smile</span>
-                                            <div className="absolute left-0 top-1/2 h-16 w-48 -translate-y-1/2 rounded-full bg-brand-blue/30" />
-                                        </span>{' '}
-                                        is our{' '}
-                                        <span className="relative inline-flex items-center gap-2">
+                            <div className="mb-8 flex flex-col items-center gap-5 text-center lg:mb-10">
+                                <div className="flex w-full max-w-5xl flex-col items-center gap-5">
+                                    <h1 className="font-display text-[clamp(3rem,6vw,6rem)] font-bold leading-[1.05] text-brand-dark">
+                                        <span className="flex flex-wrap items-center justify-center gap-4">
+                                            <span className="tracking-tight" >Your dream</span>
+                                            <span className="relative inline-flex h-[clamp(3.25rem,9vw,4.5rem)] w-[clamp(8rem,20vw,10rem)] items-center justify-center overflow-hidden rounded-full shadow-lg">
+                                                <img
+                                                    src="/elements/hero-pill-1.png"
+                                                    alt="Dental care"
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            </span>
+                                        </span>
+                                        <span className="mt-4 flex flex-wrap items-center justify-center gap-4">
+                                            <span className="relative inline-block px-3">
+                                                <span className="relative z-10 italic" style={{ fontFamily: 'Playfair Display, serif' }}>smile</span>
+                                                <span
+                                                    aria-hidden
+                                                    className="absolute inset-x-[-0.25rem] top-1/2 h-[clamp(3rem,8vw,4rem)] -translate-y-1/2 bg-brand-blue/25"
+                                                />
+                                            </span>
+                                            <span className="relative inline-flex h-[clamp(3.25rem,9vw,4.5rem)] w-[clamp(8rem,20vw,10rem)] items-center justify-center overflow-hidden rounded-full shadow-lg">
+                                                <img
+                                                    src="/elements/hero-pill-2.png"
+                                                    alt="Happy smile"
+                                                    className="h-full w-full object-cover"
+                                                />
+                                            </span>
+                                            <span>is our</span>
+                                        </span>
+                                    </h1>
+
+                                    <div className="flex flex-wrap items-center justify-center gap-4">
+                                        <span className="inline-flex h-[clamp(3.25rem,7vw,3.75rem)] w-[clamp(3.25rem,7vw,3.75rem)] items-center justify-center rounded-full bg-brand-dark text-brand-light shadow-xl">
                                             <svg
-                                                className="h-12 w-12 text-brand-blue"
+                                                className="h-9 w-9 text-brand-light"
                                                 fill="currentColor"
                                                 viewBox="0 0 24 24"
                                             >
                                                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
                                             </svg>
-                                            <span>Care</span>
                                         </span>
-                                    </h1>
-                                    <Link
-                                        href={register()}
-                                        className="inline-block rounded-full bg-brand-blue px-10 py-4 text-lg font-semibold text-white shadow-lg hover:opacity-90"
-                                    >
-                                        Book Your Appointment Online
-                                    </Link>
+                                        <span className="font-display text-[clamp(3rem,6vw,6rem)] font-bold leading-[1.05] text-brand-dark">
+                                            Care
+                                        </span>
+                                        <Link
+                                            href={register()}
+                                            className="inline-flex items-center justify-center rounded-full bg-brand-blue px-[clamp(2rem,5vw,2.75rem)] py-[clamp(0.85rem,2.2vw,1.1rem)] text-[clamp(1rem,2.3vw,1.3rem)] font-semibold text-white shadow-xl transition hover:opacity-90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue/60"
+                                        >
+                                            Book Your Appointment Online
+                                        </Link>
+                                    </div>
                                 </div>
                             </div>
 
                             {/* Best Deals Section */}
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between">
-                                    <h2 className="text-3xl font-bold text-brand-dark">
+                            <div className="flex items-start gap-6 lg:gap-8">
+                                <div className="flex flex-col gap-2">
+                                    <h2 className="text-2xl font-bold text-brand-dark lg:text-3xl">
                                         Best Deals
                                     </h2>
                                     <Link
                                         href="#"
-                                        className="text-sm font-medium text-brand-dark underline opacity-60 hover:opacity-100"
+                                        className="text-xs font-medium text-brand-dark underline opacity-60 hover:opacity-100 lg:text-sm"
                                     >
                                         View all services
                                     </Link>
                                 </div>
 
-                                <div className="grid gap-6 md:grid-cols-3">
+                                <div className="grid flex-1 gap-4 md:grid-cols-3">
                                     {/* Card 1 - Online Consultations */}
-                                    <div className="group relative overflow-hidden rounded-3xl bg-brand-dark p-8 text-brand-light transition-transform hover:scale-105">
-                                        <div className="mb-4 flex items-start justify-between">
-                                            <div>
-                                                <div className="mb-2 text-sm font-medium opacity-60">
+                                    <div className="group relative overflow-hidden rounded-2xl bg-brand-dark p-5 text-brand-light transition-transform hover:scale-105 lg:rounded-3xl lg:p-6">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="mb-1 text-xs font-medium opacity-60">
                                                     1
                                                 </div>
-                                                <h3 className="text-2xl font-bold">
+                                                <h3 className="text-lg font-bold leading-tight lg:text-xl">
                                                     Online
                                                     <br />
                                                     Consultations
                                                 </h3>
                                             </div>
-                                            <button className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 transition-colors hover:bg-white/10">
+                                            <button className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-white/20 transition-colors hover:bg-white/10 lg:h-9 lg:w-9">
                                                 <svg
-                                                    className="h-5 w-5"
+                                                    className="h-4 w-4 lg:h-5 lg:w-5"
                                                     fill="none"
                                                     stroke="currentColor"
                                                     viewBox="0 0 24 24"
@@ -277,21 +309,21 @@ export default function Welcome() {
                                     </div>
 
                                     {/* Card 2 - Best Dentists */}
-                                    <div className="group relative overflow-hidden rounded-3xl bg-brand-gray p-8 transition-transform hover:scale-105">
-                                        <div className="mb-4 flex items-start justify-between">
-                                            <div>
-                                                <div className="mb-2 text-sm font-medium text-brand-dark opacity-60">
+                                    <div className="group relative overflow-hidden rounded-2xl bg-brand-gray p-5 transition-transform hover:scale-105 lg:rounded-3xl lg:p-6">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="mb-1 text-xs font-medium text-brand-dark opacity-60">
                                                     2
                                                 </div>
-                                                <h3 className="text-2xl font-bold text-brand-dark">
+                                                <h3 className="text-lg font-bold leading-tight text-brand-dark lg:text-xl">
                                                     Best
                                                     <br />
                                                     Dentists
                                                 </h3>
                                             </div>
-                                            <button className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-dark/20 transition-colors hover:bg-black/5">
+                                            <button className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-brand-dark/20 transition-colors hover:bg-black/5 lg:h-9 lg:w-9">
                                                 <svg
-                                                    className="h-5 w-5 text-brand-dark"
+                                                    className="h-4 w-4 text-brand-dark lg:h-5 lg:w-5"
                                                     fill="none"
                                                     stroke="currentColor"
                                                     viewBox="0 0 24 24"
@@ -308,21 +340,21 @@ export default function Welcome() {
                                     </div>
 
                                     {/* Card 3 - 20+ Clinics */}
-                                    <div className="group relative overflow-hidden rounded-3xl bg-brand-gray p-8 transition-transform hover:scale-105">
-                                        <div className="mb-4 flex items-start justify-between">
-                                            <div>
-                                                <div className="mb-2 text-sm font-medium text-brand-dark opacity-60">
+                                    <div className="group relative overflow-hidden rounded-2xl bg-brand-gray p-5 transition-transform hover:scale-105 lg:rounded-3xl lg:p-6">
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex-1">
+                                                <div className="mb-1 text-xs font-medium text-brand-dark opacity-60">
                                                     3
                                                 </div>
-                                                <h3 className="text-2xl font-bold text-brand-dark">
+                                                <h3 className="text-lg font-bold leading-tight text-brand-dark lg:text-xl">
                                                     20+
                                                     <br />
                                                     Clinics
                                                 </h3>
                                             </div>
-                                            <button className="flex h-10 w-10 items-center justify-center rounded-full border border-brand-dark/20 transition-colors hover:bg-black/5">
+                                            <button className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border border-brand-dark/20 transition-colors hover:bg-black/5 lg:h-9 lg:w-9">
                                                 <svg
-                                                    className="h-5 w-5 text-brand-dark"
+                                                    className="h-4 w-4 text-brand-dark lg:h-5 lg:w-5"
                                                     fill="none"
                                                     stroke="currentColor"
                                                     viewBox="0 0 24 24"
@@ -365,7 +397,7 @@ export default function Welcome() {
 
                 {/* Second Container */}
                 <div
-                    className="fixed left-0 right-0 top-0 min-h-screen p-6 pt-20 lg:p-12 lg:pt-28"
+                    className="fixed left-0 right-0 top-4 min-h-screen p-6 pt-16 lg:p-12 lg:pt-20"
                     style={{
                         transform: `translateY(${parallaxOffset}%)`,
                         height: heroHeight || undefined,

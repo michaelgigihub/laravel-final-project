@@ -156,6 +156,10 @@
     body {
         @apply bg-background text-foreground;
     }
+
+    .logo-brand-light {
+        filter: brightness(0) saturate(100%) invert(98%) sepia(4%) saturate(140%) hue-rotate(202deg) brightness(99%) contrast(96%);
+    }
 }
 
 html.animated-scrollbar {
