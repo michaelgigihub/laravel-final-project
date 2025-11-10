@@ -1,115 +1,111 @@
-import type { DentistFormData, RegisterDentistProps } from '@/types';
+import type { RegisterDentistProps } from '@/types';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from '@inertiajs/react';
-import { ChangeEvent, FormEvent, useState } from 'react';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+
+const phoneRegex = /^(\+63|0)\d{10}$/;
+
+const dentistFormSchema = z.object({
+    fname: z
+        .string()
+        .min(1, 'First name is required')
+        .max(255, 'First name must not exceed 255 characters'),
+    mname: z
+        .string()
+        .max(255, 'Middle name must not exceed 255 characters')
+        .optional(),
+    lname: z
+        .string()
+        .min(1, 'Last name is required')
+        .max(255, 'Last name must not exceed 255 characters'),
+    gender: z.enum(['Male', 'Female', 'Other'], {
+        message: 'Gender is required',
+    }),
+    contact_number: z
+        .string()
+        .optional()
+        .refine(
+            (val) => {
+                if (!val || val.trim() === '') return true;
+                const cleaned = val.replace(/[\s-]/g, '');
+                return phoneRegex.test(cleaned);
+            },
+            {
+                message:
+                    'Phone number must be 11 digits starting with +63 or 0 (e.g., 0917 123 4567)',
+            },
+        ),
+    email: z
+        .string()
+        .min(1, 'Email is required')
+        .email('Invalid email address')
+        .max(255, 'Email must not exceed 255 characters'),
+    avatar: z
+        .instanceof(File)
+        .optional()
+        .refine(
+            (file) => {
+                if (!file) return true;
+                return file.size <= 2 * 1024 * 1024;
+            },
+            { message: 'Avatar must be less than 2MB' },
+        )
+        .refine(
+            (file) => {
+                if (!file) return true;
+                const validTypes = [
+                    'image/jpeg',
+                    'image/jpg',
+                    'image/png',
+                    'image/gif',
+                ];
+                return validTypes.includes(file.type);
+            },
+            { message: 'Avatar must be JPEG, JPG, PNG, or GIF' },
+        ),
+    specialization_ids: z.array(z.number()),
+    employment_status: z.string(),
+    hire_date: z.string().optional(),
+});
+
+type DentistFormData = z.infer<typeof dentistFormSchema>;
 
 export default function RegisterDentist({
     specializations = [],
     errors = {},
 }: RegisterDentistProps) {
-    const [formData, setFormData] = useState<DentistFormData>({
-        fname: '',
-        mname: '',
-        lname: '',
-        gender: '',
-        contact_number: '',
-        email: '',
-        avatar: null,
-        specialization_ids: [],
-        employment_status: 'Active',
-        hire_date: '',
+    const {
+        register,
+        handleSubmit,
+        watch,
+        setValue,
+        formState: { errors: formErrors },
+    } = useForm<DentistFormData>({
+        resolver: zodResolver(dentistFormSchema),
+        defaultValues: {
+            fname: '',
+            mname: '',
+            lname: '',
+            gender: undefined,
+            contact_number: '',
+            email: '',
+            avatar: undefined,
+            specialization_ids: [],
+            employment_status: 'Active',
+            hire_date: '',
+        },
     });
 
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-    const [phoneError, setPhoneError] = useState<string>('');
+    const selectedSpecializations = watch('specialization_ids');
 
-    const formatPhoneNumberDisplay = (value: string): string => {
-        // Remove all non-digit characters except +
-        const cleaned = value.replace(/[^\d+]/g, '');
-
-        // Handle +63 prefix
-        let digits = cleaned;
-        if (digits.startsWith('+63')) {
-            digits = '0' + digits.substring(3);
-        }
-
-        // Remove extra leading zeros
-        digits = digits.replace(/^0+/, '0');
-
-        // Limit to 11 digits
-        digits = digits.substring(0, 11);
-
-        // Format: 0111 111 1111
-        if (digits.length > 7) {
-            return `${digits.substring(0, 4)} ${digits.substring(4, 7)} ${digits.substring(7)}`;
-        } else if (digits.length > 4) {
-            return `${digits.substring(0, 4)} ${digits.substring(4)}`;
-        }
-        return digits;
-    };
-
-    const validatePhoneNumber = (value: string): boolean => {
-        if (!value) return true; // Optional field
-
-        // Remove all formatting
-        const cleaned = value.replace(/[^\d+]/g, '');
-
-        // Check if starts with +63 or 0
-        if (!cleaned.startsWith('+63') && !cleaned.startsWith('0')) {
-            setPhoneError('Phone number must start with +63 or 0');
-            return false;
-        }
-
-        // Convert to standard format for length check
-        let digits = cleaned;
-        if (digits.startsWith('+63')) {
-            digits = '0' + digits.substring(3);
-        }
-
-        // Check length (must be 11 digits)
-        if (digits.length !== 11) {
-            setPhoneError(
-                'Phone number must be 11 digits (e.g., 0917 123 4567)',
-            );
-            return false;
-        }
-
-        setPhoneError('');
-        return true;
-    };
-
-    const handleInputChange = (
-        e: ChangeEvent<
-            HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-        >,
-    ) => {
-        const { name, value } = e.target;
-
-        // Special handling for phone number
-        if (name === 'contact_number') {
-            const formatted = formatPhoneNumberDisplay(value);
-            setFormData((prev) => ({
-                ...prev,
-                [name]: formatted,
-            }));
-            validatePhoneNumber(formatted);
-            return;
-        }
-
-        setFormData((prev) => ({
-            ...prev,
-            [name]: value,
-        }));
-    };
-
-    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setFormData((prev) => ({
-                ...prev,
-                avatar: file,
-            }));
+            setValue('avatar', file, { shouldValidate: true });
 
-            // Create preview
             const reader = new FileReader();
             reader.onloadend = () => {
                 setAvatarPreview(reader.result as string);
@@ -118,43 +114,29 @@ export default function RegisterDentist({
         }
     };
 
-    const handleSpecializationChange = (e: ChangeEvent<HTMLInputElement>) => {
-        const value = parseInt(e.target.value);
-        const isChecked = e.target.checked;
-
-        setFormData((prev) => ({
-            ...prev,
-            specialization_ids: isChecked
-                ? [...prev.specialization_ids, value]
-                : prev.specialization_ids.filter((id) => id !== value),
-        }));
+    const handleSpecializationChange = (id: number, isChecked: boolean) => {
+        const current = selectedSpecializations || [];
+        const updated = isChecked
+            ? [...current, id]
+            : current.filter((specId) => specId !== id);
+        setValue('specialization_ids', updated, { shouldValidate: true });
     };
 
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-        e.preventDefault();
-
-        // Validate phone number before submission
-        if (
-            formData.contact_number &&
-            !validatePhoneNumber(formData.contact_number)
-        ) {
-            return;
-        }
-
+    const onSubmit = (data: DentistFormData) => {
         const submitData = new FormData();
-        submitData.append('fname', formData.fname);
-        submitData.append('mname', formData.mname);
-        submitData.append('lname', formData.lname);
-        submitData.append('gender', formData.gender);
-        submitData.append('contact_number', formData.contact_number);
-        submitData.append('email', formData.email);
-        submitData.append('hire_date', formData.hire_date);
+        submitData.append('fname', data.fname);
+        submitData.append('mname', data.mname || '');
+        submitData.append('lname', data.lname);
+        submitData.append('gender', data.gender);
+        submitData.append('contact_number', data.contact_number || '');
+        submitData.append('email', data.email);
+        submitData.append('hire_date', data.hire_date || '');
 
-        if (formData.avatar) {
-            submitData.append('avatar', formData.avatar);
+        if (data.avatar) {
+            submitData.append('avatar', data.avatar);
         }
 
-        formData.specialization_ids.forEach((id, index) => {
+        (data.specialization_ids || []).forEach((id, index) => {
             submitData.append(`specialization_ids[${index}]`, id.toString());
         });
 
@@ -176,7 +158,7 @@ export default function RegisterDentist({
                 password will be auto-generated and sent via email.
             </p>
 
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit(onSubmit)}>
                 {/* Personal Information Section */}
                 <fieldset>
                     <legend>Personal Information</legend>
@@ -185,42 +167,34 @@ export default function RegisterDentist({
                         <label htmlFor="fname">
                             First Name <span>*</span>
                         </label>
-                        <input
-                            type="text"
-                            id="fname"
-                            name="fname"
-                            value={formData.fname}
-                            onChange={handleInputChange}
-                            required
-                        />
-                        {errors.fname && <span>{errors.fname}</span>}
+                        <input type="text" id="fname" {...register('fname')} />
+                        {(formErrors.fname || errors.fname) && (
+                            <span>
+                                {formErrors.fname?.message || errors.fname}
+                            </span>
+                        )}
                     </div>
 
                     <div>
                         <label htmlFor="mname">Middle Name</label>
-                        <input
-                            type="text"
-                            id="mname"
-                            name="mname"
-                            value={formData.mname}
-                            onChange={handleInputChange}
-                        />
-                        {errors.mname && <span>{errors.mname}</span>}
+                        <input type="text" id="mname" {...register('mname')} />
+                        {(formErrors.mname || errors.mname) && (
+                            <span>
+                                {formErrors.mname?.message || errors.mname}
+                            </span>
+                        )}
                     </div>
 
                     <div>
                         <label htmlFor="lname">
                             Last Name <span>*</span>
                         </label>
-                        <input
-                            type="text"
-                            id="lname"
-                            name="lname"
-                            value={formData.lname}
-                            onChange={handleInputChange}
-                            required
-                        />
-                        {errors.lname && <span>{errors.lname}</span>}
+                        <input type="text" id="lname" {...register('lname')} />
+                        {(formErrors.lname || errors.lname) && (
+                            <span>
+                                {formErrors.lname?.message || errors.lname}
+                            </span>
+                        )}
                         <small>
                             Used to generate default password: lastname_XXXX
                         </small>
@@ -230,19 +204,17 @@ export default function RegisterDentist({
                         <label htmlFor="gender">
                             Gender <span>*</span>
                         </label>
-                        <select
-                            id="gender"
-                            name="gender"
-                            value={formData.gender}
-                            onChange={handleInputChange}
-                            required
-                        >
+                        <select id="gender" {...register('gender')}>
                             <option value="">Select Gender</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
                             <option value="Other">Other</option>
                         </select>
-                        {errors.gender && <span>{errors.gender}</span>}
+                        {(formErrors.gender || errors.gender) && (
+                            <span>
+                                {formErrors.gender?.message || errors.gender}
+                            </span>
+                        )}
                     </div>
                 </fieldset>
 
@@ -254,15 +226,12 @@ export default function RegisterDentist({
                         <label htmlFor="email">
                             Email <span>*</span>
                         </label>
-                        <input
-                            type="email"
-                            id="email"
-                            name="email"
-                            value={formData.email}
-                            onChange={handleInputChange}
-                            required
-                        />
-                        {errors.email && <span>{errors.email}</span>}
+                        <input type="email" id="email" {...register('email')} />
+                        {(formErrors.email || errors.email) && (
+                            <span>
+                                {formErrors.email?.message || errors.email}
+                            </span>
+                        )}
                         <small>
                             Login credentials will be sent to this email
                         </small>
@@ -273,15 +242,15 @@ export default function RegisterDentist({
                         <input
                             type="tel"
                             id="contact_number"
-                            name="contact_number"
-                            value={formData.contact_number}
-                            onChange={handleInputChange}
+                            {...register('contact_number')}
                             placeholder="0917 123 4567 or +63 917 123 4567"
                             maxLength={16}
                         />
-                        {(errors.contact_number || phoneError) && (
+                        {(formErrors.contact_number ||
+                            errors.contact_number) && (
                             <span style={{ color: 'red' }}>
-                                {errors.contact_number || phoneError}
+                                {formErrors.contact_number?.message ||
+                                    errors.contact_number}
                             </span>
                         )}
                         <small>
@@ -304,7 +273,11 @@ export default function RegisterDentist({
                             accept="image/jpeg,image/jpg,image/png,image/gif"
                             onChange={handleFileChange}
                         />
-                        {errors.avatar && <span>{errors.avatar}</span>}
+                        {(formErrors.avatar || errors.avatar) && (
+                            <span>
+                                {formErrors.avatar?.message || errors.avatar}
+                            </span>
+                        )}
                         <small>
                             Max size: 2MB. Accepted formats: JPEG, JPG, PNG, GIF
                         </small>
@@ -338,11 +311,14 @@ export default function RegisterDentist({
                                         <input
                                             type="checkbox"
                                             value={spec.id}
-                                            checked={formData.specialization_ids.includes(
-                                                spec.id,
-                                            )}
-                                            onChange={
-                                                handleSpecializationChange
+                                            checked={(
+                                                selectedSpecializations || []
+                                            ).includes(spec.id)}
+                                            onChange={(e) =>
+                                                handleSpecializationChange(
+                                                    spec.id,
+                                                    e.target.checked,
+                                                )
                                             }
                                         />
                                         {spec.name}
@@ -353,8 +329,12 @@ export default function RegisterDentist({
                     ) : (
                         <p>No specializations available</p>
                     )}
-                    {errors.specialization_ids && (
-                        <span>{errors.specialization_ids}</span>
+                    {(formErrors.specialization_ids ||
+                        errors.specialization_ids) && (
+                        <span>
+                            {formErrors.specialization_ids?.message ||
+                                errors.specialization_ids}
+                        </span>
                     )}
                 </fieldset>
 
@@ -367,11 +347,14 @@ export default function RegisterDentist({
                         <input
                             type="date"
                             id="hire_date"
-                            name="hire_date"
-                            value={formData.hire_date}
-                            onChange={handleInputChange}
+                            {...register('hire_date')}
                         />
-                        {errors.hire_date && <span>{errors.hire_date}</span>}
+                        {(formErrors.hire_date || errors.hire_date) && (
+                            <span>
+                                {formErrors.hire_date?.message ||
+                                    errors.hire_date}
+                            </span>
+                        )}
                         <small>
                             Employment status will be set to "Active" by default
                         </small>

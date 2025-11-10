@@ -18,10 +18,8 @@ class AdminController extends Controller
     {
         $this->dentistService = $dentistService;
     }
-
-    /**
-     * Display a listing of dentists.
-     */
+    
+    // Display a listing of dentists
     public function indexDentists()
     {
         // Get all dentists with eager loading to prevent N+1 queries
