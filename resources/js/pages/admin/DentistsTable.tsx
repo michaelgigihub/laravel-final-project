@@ -69,17 +69,27 @@ export default function DentistsTable({ dentists, specializations = [], errors =
                 const status = row.original.employment_status;
                 const isActive = status?.toLowerCase() === 'active';
 
+                const statusStyle = isActive
+                    ? {
+                          className: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+                          dotClass: 'bg-green-500',
+                      }
+                    : {
+                          className: 'bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700',
+                          dotClass: 'bg-gray-500',
+                      };
+
                 return (
-                    <Badge
-                        variant={isActive ? 'default' : 'destructive'}
-                        className={
-                            isActive
-                                ? 'bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800'
-                                : ''
-                        }
-                    >
-                        {status || 'Unknown'}
-                    </Badge>
+                    <div className="flex justify-center">
+                        <div
+                            className={`inline-flex h-7 items-center justify-center gap-2 rounded-full border px-3 text-xs font-semibold ${statusStyle.className}`}
+                        >
+                            <span
+                                className={`h-2 w-2 rounded-full ${statusStyle.dotClass}`}
+                            />
+                            {status || 'Unknown'}
+                        </div>
+                    </div>
                 );
             },
         },
@@ -88,13 +98,15 @@ export default function DentistsTable({ dentists, specializations = [], errors =
             id: 'actions',
             header: 'Actions',
             cell: ({ row }: { row: { original: Dentist } }) => (
-                <Link
-                    href={`/admin/dentists/${row.original.dentist_id}`}
-                    className="inline-flex items-center justify-center rounded-md p-2 text-blue-600 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-400 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
-                    title="View dentist details"
-                >
-                    <Eye className="size-4" />
-                </Link>
+                <div className="flex justify-center">
+                    <Link
+                        href={`/admin/dentists/${row.original.dentist_id}`}
+                        className="inline-flex items-center justify-center rounded-md p-2 text-blue-600 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-400 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
+                        title="View dentist details"
+                    >
+                        <Eye className="size-4" />
+                    </Link>
+                </div>
             ),
         },
     ];
