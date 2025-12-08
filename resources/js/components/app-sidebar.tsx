@@ -2,19 +2,39 @@ import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
+    SidebarGroup,
+    SidebarGroupLabel,
     SidebarHeader,
     SidebarMenu,
     SidebarMenuButton,
     SidebarMenuItem,
+    SidebarMenuSub,
+    SidebarMenuSubButton,
+    SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import admin from '@/routes/admin';
 import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
-import { BookOpen, Folder, LayoutGrid, Stethoscope, FileText } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import {
+    BookOpen,
+    ChevronRight,
+    FileText,
+    Folder,
+    LayoutGrid,
+    Settings,
+    Stethoscope,
+    Syringe,
+    Tag,
+} from 'lucide-react';
 import AppLogo from './app-logo';
 
 const mainNavItems: NavItem[] = [
@@ -35,6 +55,25 @@ const mainNavItems: NavItem[] = [
     },
 ];
 
+interface ServiceSubItem {
+    title: string;
+    href: string;
+    icon: typeof Tag;
+}
+
+const servicesSubItems: ServiceSubItem[] = [
+    {
+        title: 'Specializations',
+        href: '/admin/specializations',
+        icon: Tag,
+    },
+    {
+        title: 'Treatment Types',
+        href: '/admin/treatment-types',
+        icon: Syringe,
+    },
+];
+
 const footerNavItems: NavItem[] = [
     {
         title: 'Repository',
@@ -49,6 +88,12 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
+    const page = usePage();
+
+    const isServicesActive = servicesSubItems.some((item) =>
+        page.url.startsWith(item.href),
+    );
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -65,6 +110,56 @@ export function AppSidebar() {
 
             <SidebarContent>
                 <NavMain items={mainNavItems} />
+
+                <SidebarGroup className="px-2 py-0">
+                    <SidebarGroupLabel>Management</SidebarGroupLabel>
+                    <SidebarMenu>
+                        <Collapsible
+                            asChild
+                            defaultOpen={isServicesActive}
+                            className="group/collapsible"
+                        >
+                            <SidebarMenuItem>
+                                <CollapsibleTrigger asChild>
+                                    <SidebarMenuButton
+                                        tooltip={{ children: 'Services' }}
+                                        isActive={isServicesActive}
+                                    >
+                                        <Settings />
+                                        <span>Services</span>
+                                        <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                                    </SidebarMenuButton>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        {servicesSubItems.map((item) => (
+                                            <SidebarMenuSubItem
+                                                key={item.title}
+                                            >
+                                                <SidebarMenuSubButton
+                                                    asChild
+                                                    isActive={page.url.startsWith(
+                                                        item.href,
+                                                    )}
+                                                >
+                                                    <Link
+                                                        href={item.href}
+                                                        prefetch
+                                                    >
+                                                        <item.icon />
+                                                        <span>
+                                                            {item.title}
+                                                        </span>
+                                                    </Link>
+                                                </SidebarMenuSubButton>
+                                            </SidebarMenuSubItem>
+                                        ))}
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </SidebarMenuItem>
+                        </Collapsible>
+                    </SidebarMenu>
+                </SidebarGroup>
             </SidebarContent>
 
             <SidebarFooter>

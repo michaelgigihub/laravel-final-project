@@ -147,14 +147,21 @@ class DentistService
             }
 
             // Update dentist profile if employment_status is provided
-            if (isset($validated['employment_status'])) {
-                DB::table('dentist_profiles')
-                    ->where('dentist_id', $dentist->id)
-                    ->update([
-                        'employment_status' => $validated['employment_status'],
-                        'updated_at' => now(),
-                    ]);
-            }
+                $updateData = ['updated_at' => now()];
+                
+                if (isset($validated['employment_status'])) {
+                    $updateData['employment_status'] = $validated['employment_status'];
+                }
+
+                if (isset($validated['hire_date'])) {
+                    $updateData['hire_date'] = $validated['hire_date'];
+                }
+
+                if (count($updateData) > 1) { // Check if we have more than just updated_at
+                    DB::table('dentist_profiles')
+                        ->where('dentist_id', $dentist->id)
+                        ->update($updateData);
+                }
 
             DB::commit();
 

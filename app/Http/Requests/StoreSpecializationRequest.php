@@ -22,7 +22,8 @@ class StoreSpecializationRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255|unique:specializations,name',
+            'names' => 'required|array',
+            'names.*' => 'required|string|max:255|unique:specializations,name',
         ];
     }
 
@@ -34,8 +35,9 @@ class StoreSpecializationRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.required' => 'Specialization name is required',
-            'name.unique' => 'This specialization already exists',
+            'names.required' => 'At least one specialization is required',
+            'names.*.required' => 'Specialization name is required',
+            'names.*.unique' => 'This specialization already exists',
         ];
     }
 }

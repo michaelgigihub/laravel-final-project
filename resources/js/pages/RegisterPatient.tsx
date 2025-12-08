@@ -8,8 +8,28 @@ import {
 import type { AddPatientProps } from '@/types';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { router } from '@inertiajs/react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
+
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select';
+import {
+    Field,
+    FieldError,
+    FieldGroup,
+    FieldLabel,
+    FieldSet,
+    FieldLegend,
+} from '@/components/ui/field';
 
 const patientFormSchema = z.object({
     fname: nameSchema('First name'),
@@ -31,6 +51,7 @@ export default function AddPatient({ errors = {} }: AddPatientProps) {
     const {
         register,
         handleSubmit,
+        control,
         formState: { errors: formErrors, isSubmitting },
     } = useForm<PatientFormData>({
         resolver: zodResolver(patientFormSchema),
@@ -56,147 +77,112 @@ export default function AddPatient({ errors = {} }: AddPatientProps) {
     };
 
     return (
-        <div>
-            <h1>Add New Patient</h1>
-            <p>Fill in the details below to add a new patient record.</p>
+        <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+            <Card className="w-full max-w-3xl">
+                <CardHeader>
+                    <CardTitle>Add New Patient</CardTitle>
+                    <CardDescription>Fill in the details below to add a new patient record.</CardDescription>
+                </CardHeader>
+                <form onSubmit={handleSubmit(onSubmit)}>
+                    <CardContent className="space-y-8">
+                        {/* Personal Information Section */}
+                        <FieldSet>
+                            <FieldLegend>Personal Information</FieldLegend>
+                            <FieldGroup className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Field data-invalid={!!(formErrors.fname || errors.fname)}>
+                                    <FieldLabel>First Name <span className="text-destructive">*</span></FieldLabel>
+                                    <Input {...register('fname')} placeholder="First Name" aria-invalid={!!(formErrors.fname || errors.fname)} />
+                                    <FieldError errors={[{ message: formErrors.fname?.message || errors.fname }]} />
+                                </Field>
 
-            <form onSubmit={handleSubmit(onSubmit)}>
-                {/* Personal Information Section */}
-                <fieldset>
-                    <legend>Personal Information</legend>
+                                <Field data-invalid={!!(formErrors.mname || errors.mname)}>
+                                    <FieldLabel>Middle Name</FieldLabel>
+                                    <Input {...register('mname')} placeholder="Middle Name" aria-invalid={!!(formErrors.mname || errors.mname)} />
+                                    <FieldError errors={[{ message: formErrors.mname?.message || errors.mname }]} />
+                                </Field>
 
-                    <div>
-                        <label htmlFor="fname">
-                            First Name <span>*</span>
-                        </label>
-                        <input type="text" id="fname" {...register('fname')} />
-                        {(formErrors.fname || errors.fname) && (
-                            <span style={{ color: 'red' }}>
-                                {formErrors.fname?.message || errors.fname}
-                            </span>
-                        )}
-                    </div>
+                                <Field data-invalid={!!(formErrors.lname || errors.lname)}>
+                                    <FieldLabel>Last Name <span className="text-destructive">*</span></FieldLabel>
+                                    <Input {...register('lname')} placeholder="Last Name" aria-invalid={!!(formErrors.lname || errors.lname)} />
+                                    <FieldError errors={[{ message: formErrors.lname?.message || errors.lname }]} />
+                                </Field>
+                            </FieldGroup>
 
-                    <div>
-                        <label htmlFor="mname">Middle Name</label>
-                        <input type="text" id="mname" {...register('mname')} />
-                        {(formErrors.mname || errors.mname) && (
-                            <span style={{ color: 'red' }}>
-                                {formErrors.mname?.message || errors.mname}
-                            </span>
-                        )}
-                    </div>
+                            <FieldGroup className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                                <Field data-invalid={!!(formErrors.gender || errors.gender)}>
+                                    <FieldLabel>Gender <span className="text-destructive">*</span></FieldLabel>
+                                    <Controller
+                                        control={control}
+                                        name="gender"
+                                        render={({ field }) => (
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <SelectTrigger aria-invalid={!!(formErrors.gender || errors.gender)}>
+                                                    <SelectValue placeholder="Select Gender" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Male">Male</SelectItem>
+                                                    <SelectItem value="Female">Female</SelectItem>
+                                                    <SelectItem value="Other">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                    <FieldError errors={[{ message: formErrors.gender?.message || errors.gender }]} />
+                                </Field>
 
-                    <div>
-                        <label htmlFor="lname">
-                            Last Name <span>*</span>
-                        </label>
-                        <input type="text" id="lname" {...register('lname')} />
-                        {(formErrors.lname || errors.lname) && (
-                            <span style={{ color: 'red' }}>
-                                {formErrors.lname?.message || errors.lname}
-                            </span>
-                        )}
-                    </div>
+                                <Field data-invalid={!!(formErrors.date_of_birth || errors.date_of_birth)}>
+                                    <FieldLabel>Date of Birth <span className="text-destructive">*</span></FieldLabel>
+                                    <Input type="date" {...register('date_of_birth')} aria-invalid={!!(formErrors.date_of_birth || errors.date_of_birth)} />
+                                    <FieldError errors={[{ message: formErrors.date_of_birth?.message || errors.date_of_birth }]} />
+                                </Field>
+                            </FieldGroup>
+                        </FieldSet>
 
-                    <div>
-                        <label htmlFor="gender">
-                            Gender <span>*</span>
-                        </label>
-                        <select id="gender" {...register('gender')}>
-                            <option value="">Select Gender</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        {(formErrors.gender || errors.gender) && (
-                            <span style={{ color: 'red' }}>
-                                {formErrors.gender?.message || errors.gender}
-                            </span>
-                        )}
-                    </div>
+                        {/* Contact Information Section */}
+                        <FieldSet>
+                            <FieldLegend>Contact Information</FieldLegend>
+                            <FieldGroup className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Field data-invalid={!!(formErrors.email || errors.email)}>
+                                    <FieldLabel>Email</FieldLabel>
+                                    <Input type="email" {...register('email')} placeholder="email@example.com" aria-invalid={!!(formErrors.email || errors.email)} />
+                                    <FieldError errors={[{ message: formErrors.email?.message || errors.email }]} />
+                                </Field>
 
-                    <div>
-                        <label htmlFor="date_of_birth">
-                            Date of Birth <span>*</span>
-                        </label>
-                        <input
-                            type="date"
-                            id="date_of_birth"
-                            {...register('date_of_birth')}
-                        />
-                        {(formErrors.date_of_birth || errors.date_of_birth) && (
-                            <span style={{ color: 'red' }}>
-                                {formErrors.date_of_birth?.message ||
-                                    errors.date_of_birth}
-                            </span>
-                        )}
-                    </div>
-                </fieldset>
+                                <Field data-invalid={!!(formErrors.contact_number || errors.contact_number)}>
+                                    <FieldLabel>Contact Number</FieldLabel>
+                                    <Input
+                                        type="tel"
+                                        {...register('contact_number')}
+                                        placeholder="0917 123 4567"
+                                        maxLength={16}
+                                        aria-invalid={!!(formErrors.contact_number || errors.contact_number)}
+                                    />
+                                    <FieldError errors={[{ message: formErrors.contact_number?.message || errors.contact_number }]} />
+                                    <p className="text-[0.8rem] text-muted-foreground mt-1">Accepts: +63 prefix, 0 prefix, or plain numbers.</p>
+                                </Field>
+                            </FieldGroup>
 
-                {/* Contact Information Section */}
-                <fieldset>
-                    <legend>Contact Information</legend>
-
-                    <div>
-                        <label htmlFor="email">Email</label>
-                        <input type="email" id="email" {...register('email')} />
-                        {(formErrors.email || errors.email) && (
-                            <span style={{ color: 'red' }}>
-                                {formErrors.email?.message || errors.email}
-                            </span>
-                        )}
-                    </div>
-
-                    <div>
-                        <label htmlFor="contact_number">Contact Number</label>
-                        <input
-                            type="tel"
-                            id="contact_number"
-                            {...register('contact_number')}
-                            placeholder="0917 123 4567 or +63 917 123 4567"
-                            maxLength={16}
-                        />
-                        {(formErrors.contact_number ||
-                            errors.contact_number) && (
-                            <span style={{ color: 'red' }}>
-                                {formErrors.contact_number?.message ||
-                                    errors.contact_number}
-                            </span>
-                        )}
-                        <small>
-                            Accepts: +63 prefix, 0 prefix, or plain numbers.
-                        </small>
-                    </div>
-
-                    <div>
-                        <label htmlFor="address">Address</label>
-                        <textarea
-                            id="address"
-                            {...register('address')}
-                            rows={3}
-                        />
-                        {(formErrors.address || errors.address) && (
-                            <span style={{ color: 'red' }}>
-                                {formErrors.address?.message || errors.address}
-                            </span>
-                        )}
-                    </div>
-                </fieldset>
-
-                {/* Submit Button */}
-                <div>
-                    <button type="submit" disabled={isSubmitting}>
-                        {isSubmitting ? 'Adding...' : 'Add Patient'}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => router.visit('/patients')}
-                    >
-                        Cancel
-                    </button>
-                </div>
-            </form>
+                            <Field className="mt-4" data-invalid={!!(formErrors.address || errors.address)}>
+                                <FieldLabel>Address</FieldLabel>
+                                <Textarea {...register('address')} placeholder="Complete Address" rows={3} aria-invalid={!!(formErrors.address || errors.address)} />
+                                <FieldError errors={[{ message: formErrors.address?.message || errors.address }]} />
+                            </Field>
+                        </FieldSet>
+                    </CardContent>
+                    <CardFooter className="flex justify-end space-x-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => router.visit('/patients')}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting ? 'Adding...' : 'Add Patient'}
+                        </Button>
+                    </CardFooter>
+                </form>
+            </Card>
         </div>
     );
 }

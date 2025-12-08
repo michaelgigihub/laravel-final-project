@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreDentistRequest;
+use App\Http\Requests\UpdateDentistRequest;
 use App\Http\Resources\DentistProfileResource;
 use App\Models\AdminAudit;
 use App\Models\Specialization;
@@ -40,7 +41,7 @@ class AdminController extends Controller
                 ];
             });
 
-        return Inertia::render('DentistsTable', [
+        return Inertia::render('admin/DentistsTable', [
             'dentists' => $dentists,
         ]);
     }
@@ -59,7 +60,7 @@ class AdminController extends Controller
             ];
         });
 
-        return Inertia::render('RegisterDentist', [
+        return Inertia::render('admin/RegisterDentist', [
             'specializations' => $specializations,
         ]);
     }
@@ -109,10 +110,58 @@ class AdminController extends Controller
         // Eager load all necessary relationships in one query
         $dentist->load(['dentistProfile', 'specializations', 'role']);
 
+        // Get all available specializations
+        $specializations = Specialization::all()->map(function ($spec) {
+            return [
+                'id' => $spec->id,
+                'name' => $spec->name,
+            ];
+        });
+
         return Inertia::render('dentist/profile', [
             'dentist' => (new DentistProfileResource($dentist, includeAdminFields: true))->resolve(),
+            'specializations' => $specializations,
             'viewMode' => 'admin',
         ]);
+    }
+
+    /**
+     * Update the specified dentist.
+     */
+    public function updateDentist(UpdateDentistRequest $request, User $dentist)
+    {
+        try {
+            $validated = $request->validated();
+            
+            // Capture old data for auditing
+            $oldDataForAudit = [
+                'email' => $dentist->email,
+                'name' => $dentist->name,
+                'contact_number' => $dentist->contact_number,
+                'employment_status' => $dentist->dentistProfile?->employment_status,
+            ];
+
+            $this->dentistService->updateDentist($dentist, $validated);
+
+            // Log admin activity
+            /** @var \App\Models\User $user */
+            $user = $request->user();
+            
+            $newDataForAudit = [
+                'email' => $validated['email'],
+                'name' => $validated['fname'] . ' ' . ($validated['mname'] ? $validated['mname'] . ' ' : '') . $validated['lname'],
+                'contact_number' => $validated['contact_number'] ?? null,
+                'employment_status' => $validated['employment_status'] ?? null,
+            ];
+            
+            $this->dentistService->logDentistUpdated($user->id, $dentist, $oldDataForAudit, $newDataForAudit);
+
+            return back()->with('success', 'Dentist profile updated successfully.');
+        } catch (\Exception $e) {
+            return back()->withErrors([
+                'error' => 'Failed to update dentist: ' . $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -143,7 +192,7 @@ class AdminController extends Controller
                 ];
             });
 
-        return Inertia::render('AdminAuditLogs', [
+        return Inertia::render('admin/AdminAuditLogs', [
             'auditLogs' => $auditLogs,
         ]);
     }

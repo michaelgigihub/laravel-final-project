@@ -39,11 +39,12 @@ Route::middleware(['auth', 'verified', 'password.changed', 'role:1'])->prefix('a
     Route::get('/dentists/create', [AdminController::class, 'createDentist'])->name('dentists.create');
     Route::post('/dentists', [AdminController::class, 'storeDentist'])->name('dentists.store');
     Route::get('/dentists/{dentist}', [AdminController::class, 'showDentist'])->name('dentists.show');
+    Route::put('/dentists/{dentist}', [AdminController::class, 'updateDentist'])->name('dentists.update');
     Route::get('/audit-logs', [AdminController::class, 'indexAuditLogs'])->name('audit.logs');
 
     // Specializations management
     Route::get('/specializations', [SpecializationController::class, 'index'])->name('specializations.index');
-    Route::get('/specializations/create', [SpecializationController::class, 'create'])->name('specializations.create');
+
     Route::post('/specializations', [SpecializationController::class, 'store'])->name('specializations.store');
 
     // Treatment types management

@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
  * @method void merge(array $input)
  * @property-read string|null $contact_number
  */
-class StoreDentistRequest extends BaseDentistRequest
+class UpdateDentistRequest extends BaseDentistRequest
 {
     /**
      * Get the validation rules that apply to the request.
@@ -21,6 +21,8 @@ class StoreDentistRequest extends BaseDentistRequest
      */
     public function rules(): array
     {
+        $dentistId = $this->route('dentist')->id;
+
         return [
             'fname' => 'required|string|max:255',
             'mname' => 'nullable|string|max:255',
@@ -30,10 +32,11 @@ class StoreDentistRequest extends BaseDentistRequest
                 'nullable',
                 'string',
                 'regex:/^(\+63|0)[\s\-\(\)]?[0-9\s\-\(\)]{9,13}$/',
-                'unique:users,contact_number',
+                'unique:users,contact_number,' . $dentistId,
             ],
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048', // 2MB max
+            'email' => 'required|string|email|max:255|unique:users,email,' . $dentistId,
+            // Avatar update might be separate or same, mostly usually same but handle if file exists
+            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048', 
             'specialization_ids' => 'nullable|array',
             'specialization_ids.*' => 'exists:specializations,id',
             'employment_status' => 'nullable|string|in:Active,Un-hire',

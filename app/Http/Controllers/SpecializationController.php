@@ -12,23 +12,26 @@ class SpecializationController extends Controller
     {
         $specializations = Specialization::all();
 
-        return Inertia::render('SpecializationsTable', [
+        return Inertia::render('admin/SpecializationsTable', [
             'specializations' => $specializations,
         ]);
     }
 
-    public function create()
-    {
-        return Inertia::render('AddSpecialization');
-    }
+
 
     public function store(StoreSpecializationRequest $request)
     {
         $validated = $request->validated();
 
-        Specialization::create($validated);
+        $specializations = collect($validated['names'])->map(fn ($name) => [
+            'name' => $name,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ])->toArray();
+
+        Specialization::insert($specializations);
 
         return redirect()->route('admin.specializations.index')
-            ->with('success', 'Specialization added successfully!');
+            ->with('success', 'Specializations added successfully!');
     }
 }
