@@ -4,10 +4,70 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "lucide-react"
-import { DayButton, DayPicker, getDefaultClassNames } from "react-day-picker"
+import { DayButton, DayPicker, getDefaultClassNames, type DropdownProps } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { Button, buttonVariants } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+// Custom dropdown component for month/year selection
+function CalendarDropdown({ value, onChange, options, className, "aria-label": ariaLabel }: DropdownProps) {
+  const selectedOption = options?.find((option) => option.value === value)
+
+  const handleValueChange = (newValue: string) => {
+    if (onChange) {
+      const syntheticEvent = {
+        target: { value: newValue }
+      } as React.ChangeEvent<HTMLSelectElement>
+      onChange(syntheticEvent)
+    }
+  }
+
+  return (
+    <div 
+      className="relative z-10"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <Select
+        value={String(value)}
+        onValueChange={handleValueChange}
+      >
+        <SelectTrigger
+          className={cn(
+            "h-8 w-auto min-w-[70px] gap-1 border-input bg-background px-2 text-sm font-medium shadow-sm hover:bg-accent/50 focus:ring-primary/20",
+            className
+          )}
+          aria-label={ariaLabel}
+        >
+          <SelectValue>{selectedOption?.label}</SelectValue>
+        </SelectTrigger>
+        <SelectContent 
+          className="max-h-[200px]"
+          position="popper"
+          sideOffset={4}
+        >
+          {options?.map((option) => (
+            <SelectItem
+              key={option.value}
+              value={String(option.value)}
+              disabled={option.disabled}
+              className="text-sm cursor-pointer"
+            >
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
 
 function Calendar({
   className,
@@ -64,15 +124,15 @@ function Calendar({
           defaultClassNames.month_caption
         ),
         dropdowns: cn(
-          "w-full flex items-center text-sm font-medium justify-center h-(--cell-size) gap-1.5",
+          "w-full flex items-center text-sm font-medium justify-center h-(--cell-size) gap-2",
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative has-focus:border-ring border border-input shadow-xs has-focus:ring-ring/50 has-focus:ring-[3px] rounded-md",
+          "relative",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn(
-          "absolute bg-popover inset-0 opacity-0",
+          "absolute inset-0 opacity-0",
           defaultClassNames.dropdown
         ),
         caption_label: cn(
@@ -157,6 +217,7 @@ function Calendar({
           )
         },
         DayButton: CalendarDayButton,
+        Dropdown: CalendarDropdown,
         WeekNumber: ({ children, ...props }) => {
           return (
             <td {...props}>

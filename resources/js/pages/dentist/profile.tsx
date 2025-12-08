@@ -15,14 +15,14 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { Check, ChevronsUpDown, X } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Spinner } from '@/components/ui/spinner';
+import { Check, ChevronsUpDown, X, CalendarIcon } from 'lucide-react';
 import type { DentistProfileProps } from '@/types';
 import { Head, Link, useForm } from '@inertiajs/react';
 import {
-    ArrowLeft,
     Award,
     Briefcase,
-    Calendar,
     CalendarDays,
     Mail,
     Phone,
@@ -34,10 +34,132 @@ import {
 } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Label } from '@/components/ui/label';
+import AppLayout from '@/layouts/app-layout';
+import admin from '@/routes/admin';
+import { dashboard } from '@/routes';
+import type { BreadcrumbItem } from '@/types';
+import { toast } from 'sonner';
 
 // Define strict types for props since we are adding new ones
 interface ExtendedDentistProfileProps extends DentistProfileProps {
     specializations: Array<{ id: number; name: string }>;
+}
+
+function formatDateForInput(date: Date | undefined) {
+    if (!date) {
+        return "";
+    }
+    return date.toLocaleDateString("en-US", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+    });
+}
+
+function isValidDate(date: Date | undefined) {
+    if (!date) {
+        return false;
+    }
+    return !isNaN(date.getTime());
+}
+
+interface DatePickerWithInputProps {
+    value: string | undefined;
+    onChange: (date: string) => void;
+    className?: string;
+    error?: string;
+}
+
+function DatePickerWithInput({ value: initialValue, onChange, className, error }: DatePickerWithInputProps) {
+    const [open, setOpen] = useState(false);
+    
+    // Parse initial value (YYYY-MM-DD) to Date
+    const initialDate = useMemo(() => initialValue ? new Date(initialValue) : undefined, [initialValue]);
+    
+    const [date, setDate] = useState<Date | undefined>(initialDate);
+    const [month, setMonth] = useState<Date | undefined>(initialDate);
+    const [inputValue, setInputValue] = useState(formatDateForInput(initialDate));
+
+    // Sync with external value changes
+    useMemo(() => {
+         const d = initialValue ? new Date(initialValue) : undefined;
+         setDate(d);
+         if (d) setMonth(d);
+         setInputValue(formatDateForInput(d));
+    }, [initialValue]);
+
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputValue(e.target.value);
+        const newDate = new Date(e.target.value);
+        if (isValidDate(newDate)) {
+            setDate(newDate);
+            setMonth(newDate);
+            // Convert to YYYY-MM-DD for parent
+            // Adjust for timezone offset to avoid off-by-one error when converting to string
+            const offset = newDate.getTimezoneOffset();
+            const adjustedDate = new Date(newDate.getTime() - (offset*60*1000));
+            onChange(adjustedDate.toISOString().split('T')[0]);
+        }
+    };
+
+    const handleCalendarSelect = (newDate: Date | undefined) => {
+        setDate(newDate);
+        setInputValue(formatDateForInput(newDate));
+        setOpen(false);
+        if (newDate) {
+             // Adjust for timezone offset
+             const offset = newDate.getTimezoneOffset();
+             const adjustedDate = new Date(newDate.getTime() - (offset*60*1000));
+             onChange(adjustedDate.toISOString().split('T')[0]);
+        } else {
+             onChange('');
+        }
+    };
+
+    return (
+        <div className={className}>
+            <div className="relative flex gap-2">
+                <Input
+                    value={inputValue}
+                    placeholder="Select date"
+                    className={`bg-background pr-10 ${error ? 'border-red-500' : ''}`}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                        if (e.key === "ArrowDown") {
+                            e.preventDefault();
+                            setOpen(true);
+                        }
+                    }}
+                />
+                <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="ghost"
+                            className="absolute top-1/2 right-2 size-6 -translate-y-1/2 p-0 h-auto w-auto hover:bg-transparent focus:bg-transparent focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none"
+                        >
+                            <CalendarIcon className="size-4 text-muted-foreground hover:text-foreground transition-colors" />
+                            <span className="sr-only">Select date</span>
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                        className="w-auto overflow-hidden p-0"
+                        align="end"
+                        alignOffset={-8}
+                        sideOffset={10}
+                    >
+                        <Calendar
+                            mode="single"
+                            selected={date}
+                            captionLayout="dropdown"
+                            month={month}
+                            onMonthChange={setMonth}
+                            onSelect={handleCalendarSelect}
+                        />
+                    </PopoverContent>
+                </Popover>
+            </div>
+        </div>
+    );
 }
 
 export default function DentistProfile({
@@ -47,6 +169,32 @@ export default function DentistProfile({
 }: ExtendedDentistProfileProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+
+    const breadcrumbs: BreadcrumbItem[] = useMemo(() => {
+        const items: BreadcrumbItem[] = [
+            {
+                title: 'Dashboard',
+                href: dashboard().url,
+            },
+        ];
+
+        if (viewMode === 'admin') {
+            items.push({
+                title: 'Dentists',
+                href: admin.dentists.index().url,
+            });
+            items.push({
+                title: 'Profile',
+                href: '',
+            });
+        } else {
+            items.push({
+                title: 'My Profile',
+                href: '',
+            });
+        }
+        return items;
+    }, [viewMode]);
 
     const { data, setData, put, processing, errors, reset } = useForm({
         fname: dentist.fname,
@@ -78,7 +226,17 @@ export default function DentistProfile({
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
         put(`/admin/dentists/${dentist.id}`, {
-            onSuccess: () => setIsEditing(false),
+            onSuccess: () => {
+                setIsEditing(false);
+                toast.success('Profile updated successfully', {
+                    description: 'The dentist profile has been saved.',
+                });
+            },
+            onError: () => {
+                toast.error('Failed to update profile', {
+                    description: 'Please check the form for errors and try again.',
+                });
+            },
         });
     };
 
@@ -112,24 +270,14 @@ export default function DentistProfile({
             : 'View and manage your personal information';
 
     return (
-        <>
+        <AppLayout breadcrumbs={breadcrumbs}>
             <Head title={pageTitle} />
 
-            <div className="container mx-auto px-4 py-8">
-                {/* Header with back button for admin */}
-                <div className="mb-6 flex items-start justify-between">
+            <div className="flex h-full flex-1 flex-col gap-4 overflow-hidden rounded-xl p-4">
+                <div className="flex items-center justify-between">
                     <div>
-                        {viewMode === 'admin' && (
-                            <Link
-                                href="/admin/dentists"
-                                className="mb-4 inline-flex items-center text-sm text-blue-600 hover:text-blue-800"
-                            >
-                                <ArrowLeft className="mr-2 h-4 w-4" />
-                                Back to Dentists List
-                            </Link>
-                        )}
-                        <h1 className="text-3xl font-bold">{pageTitle}</h1>
-                        <p className="text-muted-foreground">{pageDescription}</p>
+                        <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
+                        <p className="text-sm text-muted-foreground">{pageDescription}</p>
                     </div>
                      {viewMode === 'admin' && !isEditing && (
                         <Button onClick={() => setIsEditing(true)}>
@@ -139,10 +287,12 @@ export default function DentistProfile({
                     )}
                 </div>
 
-                <form onSubmit={handleSave}>
+                <div className="relative flex-1 overflow-hidden rounded-xl border border-brand-dark/20 bg-card shadow-[0_22px_48px_-30px_rgba(38,41,47,0.6)] transition-shadow dark:border-brand-light/20 dark:bg-card/60 dark:shadow-[0_18px_42px_-28px_rgba(8,9,12,0.78)]">
+                    <div className="h-full overflow-y-auto p-6">
+                        <form onSubmit={handleSave}>
                     <div className="grid gap-6 md:grid-cols-3">
                         {/* Profile Summary Card */}
-                        <Card className="md:col-span-1">
+                        <Card className="md:col-span-1 h-full">
                             <CardContent className="pt-6">
                                 <div className="flex flex-col items-center text-center">
                                     <Avatar className="mb-4 h-32 w-32">
@@ -176,7 +326,7 @@ export default function DentistProfile({
                         </Card>
 
                         {/* Personal Information */}
-                        <Card className="md:col-span-2">
+                        <Card className="md:col-span-2 h-full">
                             <CardHeader>
                                 <CardTitle>Personal Information</CardTitle>
                             </CardHeader>
@@ -275,12 +425,7 @@ export default function DentistProfile({
                                         </Label>
                                         {/* Identify if email is editable (usually yes for admins) */}
                                         <p className="font-medium">
-                                            <a
-                                                href={`mailto:${dentist.email}`}
-                                                className="text-blue-600 hover:underline"
-                                            >
-                                                {dentist.email}
-                                            </a>
+                                            {dentist.email}
                                         </p>
                                         {/* Usually email change requires re-verification or special handling, but let's allow it if requested. User request: "Employment Status, Specializations, Hire Date, Contact Number, Gender, first name, last name". Email NOT listed. Keeping it read-only or just editable? User didn't list it. But UpdateDentistRequest validates it. I'll keep it read-only to be safe unless implied. The user list was explicit. */}
                                     </div>
@@ -308,12 +453,12 @@ export default function DentistProfile({
                         </Card>
 
                         {/* Professional Information */}
-                        <Card className="md:col-span-3">
+                        <Card className={viewMode === 'admin' ? "md:col-span-2 h-full" : "md:col-span-3 h-full"}>
                             <CardHeader>
                                 <CardTitle>Professional Information</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid gap-6 md:grid-cols-3">
+                                <div className="grid gap-6 grid-cols-1 md:grid-cols-2">
                                     <div className="space-y-2">
                                         <Label className="flex items-center text-sm text-muted-foreground">
                                             <Briefcase className="mr-2 h-4 w-4" />
@@ -344,16 +489,15 @@ export default function DentistProfile({
 
                                     <div className="space-y-2">
                                         <Label className="flex items-center text-sm text-muted-foreground">
-                                            <Calendar className="mr-2 h-4 w-4" />
+                                            <CalendarIcon className="mr-2 h-4 w-4" />
                                             Hire Date
                                         </Label>
                                          {isEditing ? (
                                             <>
-                                                <Input
-                                                    type="date"
+                                                <DatePickerWithInput
                                                     value={data.hire_date}
-                                                    onChange={(e) => setData('hire_date', e.target.value)}
-                                                    className={errors.hire_date ? 'border-red-500' : ''}
+                                                    onChange={(date) => setData('hire_date', date)}
+                                                    error={errors.hire_date}
                                                 />
                                                  {errors.hire_date && <span className="text-xs text-red-500">{errors.hire_date}</span>}
                                             </>
@@ -367,7 +511,7 @@ export default function DentistProfile({
                                         )}
                                     </div>
 
-                                    <div className="space-y-2 col-span-3 md:col-span-1">
+                                    <div className="space-y-2 col-span-1 md:col-span-2">
                                         <Label className="flex items-center text-sm text-muted-foreground">
                                             <Award className="mr-2 h-4 w-4" />
                                             Specializations
@@ -377,27 +521,35 @@ export default function DentistProfile({
                                             {dentist.specializations.length > 0 || data.specialization_ids.length > 0 ? (
                                                 specializations
                                                     .filter(s => data.specialization_ids.includes(s.id))
-                                                    .map((spec) => (
-                                                        <Badge
-                                                            key={spec.id}
-                                                            variant="secondary"
-                                                            className="flex items-center gap-1"
-                                                        >
-                                                            {spec.name}
-                                                            {isEditing && (
-                                                                <button
-                                                                    type="button"
-                                                                    className="ml-1 rounded-full p-0.5 hover:bg-destructive/10 hover:text-destructive focus:outline-none"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        toggleSpecialization(spec.id);
-                                                                    }}
-                                                                >
-                                                                    <X className="h-3 w-3" />
-                                                                </button>
-                                                            )}
-                                                        </Badge>
-                                                ))
+                                                    .map((spec) => {
+                                                        // Check if this is a newly added specialization (not in original)
+                                                        const isNewlyAdded = isEditing && !dentist.specializations.some(s => s.id === spec.id);
+                                                        
+                                                        return (
+                                                            <Badge
+                                                                key={spec.id}
+                                                                variant={isNewlyAdded ? "outline" : "secondary"}
+                                                                className={`flex items-center gap-1 ${isNewlyAdded ? 'border-green-500 bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-400' : ''}`}
+                                                            >
+                                                                {spec.name}
+                                                                {isNewlyAdded && (
+                                                                    <span className="text-[10px] font-normal opacity-75">(new)</span>
+                                                                )}
+                                                                {isEditing && (
+                                                                    <button
+                                                                        type="button"
+                                                                        className={`ml-1 rounded-full p-0.5 focus:outline-none ${isNewlyAdded ? 'hover:bg-green-200 hover:text-green-800 dark:hover:bg-green-800 dark:hover:text-green-200' : 'hover:bg-destructive/10 hover:text-destructive'}`}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            toggleSpecialization(spec.id);
+                                                                        }}
+                                                                    >
+                                                                        <X className="h-3 w-3" />
+                                                                    </button>
+                                                                )}
+                                                            </Badge>
+                                                        );
+                                                    })
                                             ) : (
                                                  !isEditing && <span className="text-sm text-muted-foreground">
                                                     No specializations assigned
@@ -411,7 +563,7 @@ export default function DentistProfile({
                                                     <Button
                                                         variant="outline"
                                                         role="combobox"
-                                                        className="w-full justify-between"
+                                                        className="w-full justify-between hover:bg-transparent hover:text-foreground hover:border-input"
                                                     >
                                                         Add Specialization...
                                                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -455,12 +607,12 @@ export default function DentistProfile({
 
                         {/* Admin-only: Additional Information */}
                         {viewMode === 'admin' && (
-                            <Card className="md:col-span-3">
+                            <Card className="md:col-span-1 h-full">
                                 <CardHeader>
                                     <CardTitle>System Information</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <div className="grid gap-6 md:grid-cols-3">
+                                    <div className="grid gap-6 grid-cols-1">
                                         {dentist.created_at_formatted && (
                                             <div className="space-y-1">
                                                 <div className="flex items-center text-sm text-muted-foreground">
@@ -519,16 +671,27 @@ export default function DentistProfile({
                                     type="submit"
                                     size="lg"
                                     disabled={processing}
-                                    className="shadow-lg"
+                                    className="shadow-lg min-w-[140px]"
                                 >
-                                    <Save className="mr-2 h-4 w-4" />
-                                    Save Changes
+                                    {processing ? (
+                                        <>
+                                            <Spinner className="mr-2 h-4 w-4" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="mr-2 h-4 w-4" />
+                                            Save Changes
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         )}
                     </div>
-                </form>
+                        </form>
+                    </div>
+                </div>
             </div>
-        </>
+        </AppLayout>
     );
 }
