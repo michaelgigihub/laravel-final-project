@@ -385,10 +385,16 @@ export default function DentistProfile({
                                                         >
                                                             {spec.name}
                                                             {isEditing && (
-                                                                <X
-                                                                    className="h-3 w-3 cursor-pointer hover:text-red-500"
-                                                                    onClick={() => toggleSpecialization(spec.id)} 
-                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    className="ml-1 rounded-full p-0.5 hover:bg-destructive/10 hover:text-destructive focus:outline-none"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        toggleSpecialization(spec.id);
+                                                                    }}
+                                                                >
+                                                                    <X className="h-3 w-3" />
+                                                                </button>
                                                             )}
                                                         </Badge>
                                                 ))

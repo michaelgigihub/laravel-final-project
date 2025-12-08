@@ -47,6 +47,17 @@ export interface Specialization {
     name: string;
 }
 
+export interface TreatmentType {
+    id: number;
+    name: string;
+    description: string;
+    standard_cost: string;
+    duration_minutes: number;
+    is_active: number; // boolean in DB, but might be number if not cast
+    created_at?: string;
+    updated_at?: string;
+}
+
 export interface Dentist {
     dentist_id: number;
     fname: string;

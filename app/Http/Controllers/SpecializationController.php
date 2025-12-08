@@ -23,7 +23,7 @@ class SpecializationController extends Controller
     {
         $validated = $request->validated();
 
-        $specializations = collect($validated['names'])->map(fn ($name) => [
+        $specializations = collect($validated['names'])->map(fn($name) => [
             'name' => $name,
             'created_at' => now(),
             'updated_at' => now(),

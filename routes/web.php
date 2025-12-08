@@ -49,8 +49,9 @@ Route::middleware(['auth', 'verified', 'password.changed', 'role:1'])->prefix('a
 
     // Treatment types management
     Route::get('/treatment-types', [TreatmentTypeController::class, 'index'])->name('treatment-types.index');
-    Route::get('/treatment-types/create', [TreatmentTypeController::class, 'create'])->name('treatment-types.create');
+
     Route::post('/treatment-types', [TreatmentTypeController::class, 'store'])->name('treatment-types.store');
+    Route::put('/treatment-types/{treatmentType}', [TreatmentTypeController::class, 'update'])->name('treatment-types.update');
 });
 
 // Dentist-only routes
