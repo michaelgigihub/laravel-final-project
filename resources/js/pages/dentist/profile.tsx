@@ -174,7 +174,7 @@ export default function DentistProfile({
         const items: BreadcrumbItem[] = [
             {
                 title: 'Dashboard',
-                href: dashboard().url,
+                href: viewMode === 'self' ? '/dentist/dashboard' : dashboard().url,
             },
         ];
 
@@ -225,11 +225,17 @@ export default function DentistProfile({
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
-        put(`/admin/dentists/${dentist.id}`, {
+        
+        // Use different endpoint based on viewMode
+        const endpoint = viewMode === 'admin' 
+            ? `/admin/dentists/${dentist.id}` 
+            : '/dentist/profile';
+        
+        put(endpoint, {
             onSuccess: () => {
                 setIsEditing(false);
                 toast.success('Profile updated successfully', {
-                    description: 'The dentist profile has been saved.',
+                    description: 'The profile has been saved.',
                 });
             },
             onError: () => {
@@ -279,7 +285,7 @@ export default function DentistProfile({
                         <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
                         <p className="text-sm text-muted-foreground">{pageDescription}</p>
                     </div>
-                     {viewMode === 'admin' && !isEditing && (
+                     {(viewMode === 'admin' || viewMode === 'self') && !isEditing && (
                         <Button onClick={() => setIsEditing(true)}>
                             <Pencil className="mr-2 h-4 w-4" />
                             Edit Profile
@@ -464,7 +470,7 @@ export default function DentistProfile({
                                             <Briefcase className="mr-2 h-4 w-4" />
                                             Employment Status
                                         </Label>
-                                         {isEditing ? (
+                                         {isEditing && viewMode === 'admin' ? (
                                             <>
                                                 <Select
                                                     value={data.employment_status}
@@ -492,7 +498,7 @@ export default function DentistProfile({
                                             <CalendarIcon className="mr-2 h-4 w-4" />
                                             Hire Date
                                         </Label>
-                                         {isEditing ? (
+                                         {isEditing && viewMode === 'admin' ? (
                                             <>
                                                 <DatePickerWithInput
                                                     value={data.hire_date}
@@ -502,11 +508,13 @@ export default function DentistProfile({
                                                  {errors.hire_date && <span className="text-xs text-red-500">{errors.hire_date}</span>}
                                             </>
                                         ) : (
-                                            dentist.hire_date && (
+                                            dentist.hire_date ? (
                                                 <p className="font-medium">
                                                     {dentist.hire_date_formatted ||
                                                         formatDate(dentist.hire_date)}
                                                 </p>
+                                            ) : (
+                                                <p className="text-sm text-muted-foreground">Not set</p>
                                             )
                                         )}
                                     </div>
@@ -522,8 +530,8 @@ export default function DentistProfile({
                                                 specializations
                                                     .filter(s => data.specialization_ids.includes(s.id))
                                                     .map((spec) => {
-                                                        // Check if this is a newly added specialization (not in original)
-                                                        const isNewlyAdded = isEditing && !dentist.specializations.some(s => s.id === spec.id);
+                                                        // Check if this is a newly added specialization (not in original) - only relevant for admin editing
+                                                        const isNewlyAdded = isEditing && viewMode === 'admin' && !dentist.specializations.some(s => s.id === spec.id);
                                                         
                                                         return (
                                                             <Badge
@@ -535,7 +543,7 @@ export default function DentistProfile({
                                                                 {isNewlyAdded && (
                                                                     <span className="text-[10px] font-normal opacity-75">(new)</span>
                                                                 )}
-                                                                {isEditing && (
+                                                                {isEditing && viewMode === 'admin' && (
                                                                     <button
                                                                         type="button"
                                                                         className={`ml-1 rounded-full p-0.5 focus:outline-none ${isNewlyAdded ? 'hover:bg-green-200 hover:text-green-800 dark:hover:bg-green-800 dark:hover:text-green-200' : 'hover:bg-destructive/10 hover:text-destructive'}`}
@@ -551,13 +559,13 @@ export default function DentistProfile({
                                                         );
                                                     })
                                             ) : (
-                                                 !isEditing && <span className="text-sm text-muted-foreground">
+                                                 <span className="text-sm text-muted-foreground">
                                                     No specializations assigned
                                                 </span>
                                             )}
                                         </div>
 
-                                        {isEditing && (
+                                        {isEditing && viewMode === 'admin' && (
                                             <Popover>
                                                 <PopoverTrigger asChild>
                                                     <Button

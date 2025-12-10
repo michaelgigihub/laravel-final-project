@@ -1,4 +1,5 @@
 import { Breadcrumbs } from '@/components/breadcrumbs';
+import { GlobalSearch } from '@/components/GlobalSearch';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { ThemeToggle } from '@/components/ui/theme-toggle';
 import { type BreadcrumbItem as BreadcrumbItemType } from '@/types';
@@ -14,7 +15,10 @@ export function AppSidebarHeader({
                 <SidebarTrigger className="-ml-1" />
                 <Breadcrumbs breadcrumbs={breadcrumbs} />
             </div>
-            <ThemeToggle />
+            <div className="flex items-center gap-2">
+                <GlobalSearch />
+                <ThemeToggle />
+            </div>
         </header>
     );
 }
