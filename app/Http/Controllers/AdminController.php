@@ -10,9 +10,9 @@ use App\Models\Specialization;
 use App\Models\User;
 use App\Http\Controllers\Auth\CreateNewAdminController;
 use App\Services\DentistService;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class AdminController extends Controller
@@ -24,29 +24,73 @@ class AdminController extends Controller
         $this->dentistService = $dentistService;
     }
     
-    // Display a listing of dentists
-    public function indexDentists()
+    /**
+     * Display a listing of dentists with search, filter, and pagination.
+     */
+    public function indexDentists(Request $request)
     {
-        // Get all dentists with eager loading to prevent N+1 queries
-        $dentists = User::where('role_id', 2)
-            ->with(['dentistProfile', 'specializations'])
-            ->get()
-            ->map(function ($dentist) {
-                return [
-                    'dentist_id' => $dentist->id,
-                    'fname' => $dentist->fname,
-                    'mname' => $dentist->mname,
-                    'lname' => $dentist->lname,
-                    'specialization' => $dentist->specializations->pluck('name')->join(', '),
-                    'contact_number' => $dentist->contact_number,
-                    'email' => $dentist->email,
-                    'employment_status' => $dentist->dentistProfile?->employment_status,
-                    'hire_date' => $dentist->dentistProfile?->hire_date?->format('Y-m-d'),
-                ];
+        $query = User::where('role_id', 2)
+            ->with(['dentistProfile', 'specializations']);
+
+        // Search by name or email
+        if ($search = $request->input('search')) {
+            $query->where(function ($q) use ($search) {
+                $q->where('fname', 'like', "%{$search}%")
+                    ->orWhere('lname', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
+        }
+
+        // Filter by employment status
+        if ($status = $request->input('status')) {
+            $query->whereHas('dentistProfile', function ($q) use ($status) {
+                $q->where('employment_status', $status);
+            });
+        }
+
+        // Filter by specialization
+        if ($specializationId = $request->input('specialization_id')) {
+            $query->whereHas('specializations', function ($q) use ($specializationId) {
+                $q->where('specializations.id', $specializationId);
+            });
+        }
+
+        // Paginate results
+        $perPage = $request->input('per_page', 10);
+        $dentistsPage = $query->orderBy('fname')->paginate($perPage)->withQueryString();
+
+        $dentists = $dentistsPage->through(function ($dentist) {
+            return [
+                'dentist_id' => $dentist->id,
+                'fname' => $dentist->fname,
+                'mname' => $dentist->mname,
+                'lname' => $dentist->lname,
+                'name' => trim("{$dentist->fname} {$dentist->lname}"),
+                'specialization' => $dentist->specializations->pluck('name')->join(', '),
+                'specialization_ids' => $dentist->specializations->pluck('id')->toArray(),
+                'contact_number' => $dentist->contact_number,
+                'email' => $dentist->email,
+                'employment_status' => $dentist->dentistProfile?->employment_status ?? 'Active',
+                'hire_date' => $dentist->dentistProfile?->hire_date?->format('Y-m-d'),
+            ];
+        });
+
+        // Get all available specializations for the filter
+        $specializations = Specialization::all()->map(function ($spec) {
+            return [
+                'id' => $spec->id,
+                'name' => $spec->name,
+            ];
+        });
 
         return Inertia::render('admin/DentistsTable', [
             'dentists' => $dentists,
+            'specializations' => $specializations,
+            'filters' => [
+                'search' => $request->input('search', ''),
+                'status' => $request->input('status', ''),
+                'specialization_id' => $request->input('specialization_id', ''),
+            ],
         ]);
     }
 

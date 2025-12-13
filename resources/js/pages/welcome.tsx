@@ -303,20 +303,12 @@ export default function Welcome() {
                                 Dashboard
                             </Link>
                         ) : (
-                            <>
-                                <Link
-                                    href={login()}
-                                    className="hidden rounded-full px-4 py-2 text-xs font-medium text-brand-light opacity-80 hover:opacity-100 sm:inline-flex sm:px-5 sm:py-2.5 sm:text-sm md:px-6"
-                                >
-                                    Log in
-                                </Link>
-                                <Link
-                                    href={register()}
-                                    className="rounded-full bg-brand-light px-4 py-2 text-xs font-medium text-brand-dark shadow-sm hover:opacity-90 sm:px-5 sm:py-2.5 sm:text-sm md:px-6"
-                                >
-                                    Register
-                                </Link>
-                            </>
+                            <Link
+                                href={login()}
+                                className="rounded-full bg-brand-light px-4 py-2 text-xs font-medium text-brand-dark shadow-sm hover:opacity-90 sm:px-5 sm:py-2.5 sm:text-sm md:px-6"
+                            >
+                                Log in
+                            </Link>
                         )}
                     </div>
                 </nav>

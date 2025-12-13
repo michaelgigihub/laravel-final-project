@@ -39,7 +39,7 @@ export interface User {
     two_factor_enabled?: boolean;
     created_at: string;
     updated_at: string;
-    role_id: number;
+    role_id: number; // 1 = Admin, 2 = Dentist
     [key: string]: unknown; // This allows for additional properties...
 }
 

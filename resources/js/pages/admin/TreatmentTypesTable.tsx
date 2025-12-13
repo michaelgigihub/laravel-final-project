@@ -77,14 +77,14 @@ function TreatmentStatusCell({ treatmentType }: TreatmentStatusCellProps) {
             value: true,
             label: 'Active',
             className:
-                'bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-700 border-green-200',
+                'bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800 dark:hover:bg-green-900/50 dark:hover:text-green-400',
             dotClass: 'bg-green-500',
         },
         {
             value: false,
             label: 'Archive',
             className:
-                'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-700 border-gray-200',
+                'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:text-gray-700 border-gray-200 dark:bg-gray-800/50 dark:text-gray-400 dark:border-gray-700 dark:hover:bg-gray-800/70 dark:hover:text-gray-400',
             dotClass: 'bg-gray-500',
         },
     ];
