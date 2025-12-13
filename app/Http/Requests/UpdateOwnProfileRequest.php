@@ -45,6 +45,7 @@ class UpdateOwnProfileRequest extends FormRequest
                 'regex:/^(\+63|0)[\s\-\(\)]?[0-9\s\-\(\)]{9,13}$/',
                 'unique:users,contact_number,' . $userId,
             ],
+            'avatar' => 'nullable|image|mimes:jpeg,jpg,png,gif|max:2048',
         ];
     }
 

@@ -10,7 +10,7 @@ import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
 import { type User } from '@/types';
 import { Link, router } from '@inertiajs/react';
-import { LogOut, Settings } from 'lucide-react';
+import { LogOut, Settings, User as UserIcon } from 'lucide-react';
 
 interface UserMenuContentProps {
     user: User;
@@ -33,6 +33,20 @@ export function UserMenuContent({ user }: UserMenuContentProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
+                {user.role_id === 2 && (
+                    <DropdownMenuItem asChild>
+                        <Link
+                            className="block w-full"
+                            href="/dentist/profile"
+                            as="button"
+                            prefetch
+                            onClick={cleanup}
+                        >
+                            <UserIcon className="mr-2" />
+                            My Profile
+                        </Link>
+                    </DropdownMenuItem>
+                )}
                 <DropdownMenuItem asChild>
                     <Link
                         className="block w-full"

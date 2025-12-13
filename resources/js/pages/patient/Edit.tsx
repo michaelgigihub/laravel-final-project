@@ -16,6 +16,7 @@ import { Head } from '@inertiajs/react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -158,7 +159,18 @@ export default function EditPatient({ patient, errors = {} }: EditPatientProps) 
 
                                     <Field data-invalid={!!(formErrors.date_of_birth || errors.date_of_birth)}>
                                         <FieldLabel>Date of Birth <span className="text-destructive">*</span></FieldLabel>
-                                        <Input type="date" {...register('date_of_birth')} aria-invalid={!!(formErrors.date_of_birth || errors.date_of_birth)} />
+                                        <Controller
+                                            control={control}
+                                            name="date_of_birth"
+                                            render={({ field }) => (
+                                                <DatePicker
+                                                    value={field.value}
+                                                    onChange={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                                                    placeholder="Select date of birth"
+                                                    disableFuture
+                                                />
+                                            )}
+                                        />
                                         <FieldError errors={[{ message: formErrors.date_of_birth?.message || errors.date_of_birth }]} />
                                     </Field>
                                 </FieldGroup>

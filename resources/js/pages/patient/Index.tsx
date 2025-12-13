@@ -1,11 +1,12 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye, Search } from 'lucide-react';
+import { CalendarPlus, Eye, Search, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import { RegisterPatientDialog } from '@/components/RegisterPatientDialog';
 import {
@@ -15,14 +16,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 
 interface Patient {
     id: number;
@@ -66,29 +59,22 @@ const breadcrumbs: BreadcrumbItem[] = [
 
 export default function PatientsIndex({ patients, filters }: PatientsIndexProps) {
     const [search, setSearch] = useState(filters.search || '');
-    const [gender, setGender] = useState(filters.gender || '');
 
     const handleSearch = () => {
-        router.get('/patients', { search, gender }, { preserveState: true, preserveScroll: true });
+        router.get('/patients', { search, gender: filters.gender }, { preserveState: true, preserveScroll: true });
     };
 
-    const handleKeyPress = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
+    const handleFilterChange = (key: 'gender', value: string) => {
+        const newValue = value === 'all' ? '' : value;
+        router.get('/patients', { search: filters.search, [key]: newValue }, { preserveState: true, preserveScroll: true });
     };
 
-    const handleGenderChange = (value: string) => {
-        const newGender = value === 'all' ? '' : value;
-        setGender(newGender);
-        router.get('/patients', { search, gender: newGender }, { preserveState: true, preserveScroll: true });
-    };
-
-    const clearFilters = () => {
+    const handleClearFilters = () => {
         setSearch('');
-        setGender('');
         router.get('/patients', {}, { preserveState: true, preserveScroll: true });
     };
+
+    const hasFilters = filters.search || filters.gender;
 
     const formatDate = (dateString: string) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -103,12 +89,67 @@ export default function PatientsIndex({ patients, filters }: PatientsIndexProps)
         return parts.join(' ');
     };
 
+    const columns = [
+        { accessorKey: 'id', header: 'ID' },
+        { 
+            accessorKey: 'name', 
+            header: 'Name',
+            cell: ({ row }: { row: { original: Patient } }) => (
+                <span className="font-medium">{getFullName(row.original)}</span>
+            ),
+        },
+        {
+            accessorKey: 'gender',
+            header: 'Gender',
+            cell: ({ row }: { row: { original: Patient } }) => (
+                <Badge variant="secondary">{row.original.gender}</Badge>
+            ),
+        },
+        {
+            accessorKey: 'date_of_birth',
+            header: 'Date of Birth',
+            cell: ({ row }: { row: { original: Patient } }) => formatDate(row.original.date_of_birth),
+        },
+        {
+            accessorKey: 'contact_number',
+            header: 'Contact',
+            cell: ({ row }: { row: { original: Patient } }) => row.original.contact_number || '-',
+        },
+        {
+            accessorKey: 'email',
+            header: 'Email',
+            cell: ({ row }: { row: { original: Patient } }) => row.original.email || '-',
+        },
+        {
+            id: 'actions',
+            header: 'Actions',
+            cell: ({ row }: { row: { original: Patient } }) => (
+                <div className="flex justify-center gap-1">
+                    <Link
+                        href={`/patients/${row.original.id}`}
+                        className="inline-flex items-center justify-center rounded-md p-2 text-blue-600 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-400 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
+                        title="View patient details"
+                    >
+                        <Eye className="size-4" />
+                    </Link>
+                    <Link
+                        href={`/appointments/create?patient_id=${row.original.id}`}
+                        className="inline-flex items-center justify-center rounded-md p-2 text-green-600 hover:bg-green-50 hover:text-green-800 dark:text-green-400 dark:hover:bg-green-950 dark:hover:text-green-300 transition-colors"
+                        title="Book appointment"
+                    >
+                        <CalendarPlus className="size-4" />
+                    </Link>
+                </div>
+            ),
+        },
+    ];
+
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
             <Head title="Patients" />
             <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
                 {/* Header */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold tracking-tight">Patients</h1>
                         <p className="text-sm text-muted-foreground">
@@ -118,21 +159,27 @@ export default function PatientsIndex({ patients, filters }: PatientsIndexProps)
                     <RegisterPatientDialog />
                 </div>
 
-                {/* Filters */}
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                    <div className="relative flex-1 sm:max-w-sm">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                {/* Filters - matching DentistsTable style */}
+                <div className="flex flex-wrap gap-4 items-center">
+                    <div className="flex gap-2 flex-1 min-w-[200px] max-w-md">
                         <Input
                             placeholder="Search by name, email, or phone..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={handleKeyPress}
-                            className="pl-8"
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                            className="flex-1"
                         />
+                        <Button onClick={handleSearch} size="icon" variant="outline">
+                            <Search className="size-4" />
+                        </Button>
                     </div>
-                    <Select value={gender || 'all'} onValueChange={handleGenderChange}>
+
+                    <Select
+                        value={filters.gender || 'all'}
+                        onValueChange={(value) => handleFilterChange('gender', value)}
+                    >
                         <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="Gender" />
+                            <SelectValue placeholder="All Genders" />
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Genders</SelectItem>
@@ -141,65 +188,19 @@ export default function PatientsIndex({ patients, filters }: PatientsIndexProps)
                             <SelectItem value="Other">Other</SelectItem>
                         </SelectContent>
                     </Select>
-                    <Button variant="outline" onClick={handleSearch}>
-                        Search
-                    </Button>
-                    {(filters.search || filters.gender) && (
-                        <Button variant="ghost" onClick={clearFilters}>
+
+                    {hasFilters && (
+                        <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                            <X className="size-4 mr-1" />
                             Clear
                         </Button>
                     )}
                 </div>
 
-                {/* Table */}
+                {/* Table with Column Visibility */}
                 <div className="relative flex-1 overflow-hidden rounded-xl border border-brand-dark/20 bg-card shadow-[0_22px_48px_-30px_rgba(38,41,47,0.6)] transition-shadow dark:border-brand-light/20 dark:bg-card/60 dark:shadow-[0_18px_42px_-28px_rgba(8,9,12,0.78)]">
-                    <div className="h-full overflow-auto">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>ID</TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Gender</TableHead>
-                                    <TableHead>Date of Birth</TableHead>
-                                    <TableHead>Contact</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead className="text-center">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {patients.data.length > 0 ? (
-                                    patients.data.map((patient) => (
-                                        <TableRow key={patient.id}>
-                                            <TableCell className="font-medium">{patient.id}</TableCell>
-                                            <TableCell>{getFullName(patient)}</TableCell>
-                                            <TableCell>
-                                                <Badge variant="secondary">{patient.gender}</Badge>
-                                            </TableCell>
-                                            <TableCell>{formatDate(patient.date_of_birth)}</TableCell>
-                                            <TableCell>{patient.contact_number || '-'}</TableCell>
-                                            <TableCell>{patient.email || '-'}</TableCell>
-                                            <TableCell>
-                                                <div className="flex justify-center">
-                                                    <Link
-                                                        href={`/patients/${patient.id}`}
-                                                        className="inline-flex items-center justify-center rounded-md p-2 text-blue-600 hover:bg-blue-50 hover:text-blue-800 dark:text-blue-400 dark:hover:bg-blue-950 dark:hover:text-blue-300 transition-colors"
-                                                        title="View patient details"
-                                                    >
-                                                        <Eye className="size-4" />
-                                                    </Link>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="h-24 text-center">
-                                            No patients found.
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                    <div className="h-full overflow-auto p-4">
+                        <DataTable columns={columns} data={patients.data} />
                     </div>
                 </div>
 

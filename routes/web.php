@@ -61,12 +61,15 @@ Route::middleware(['auth', 'verified', 'password.changed', 'role:1'])->prefix('a
     Route::put('/dentists/{dentist}', [AdminController::class, 'updateDentist'])->name('dentists.update');
     Route::get('/audit-logs', [AdminController::class, 'indexAuditLogs'])->name('audit.logs');
 
-    // Specializations management (Store)
+    // Specializations management (Store/Update/Delete)
     Route::post('/specializations', [SpecializationController::class, 'store'])->name('specializations.store');
+    Route::put('/specializations/{specialization}', [SpecializationController::class, 'update'])->name('specializations.update');
+    Route::delete('/specializations/{specialization}', [SpecializationController::class, 'destroy'])->name('specializations.destroy');
 
-    // Treatment types management (Store/Update)
+    // Treatment types management (Store/Update/Delete)
     Route::post('/treatment-types', [TreatmentTypeController::class, 'store'])->name('treatment-types.store');
     Route::put('/treatment-types/{treatmentType}', [TreatmentTypeController::class, 'update'])->name('treatment-types.update');
+    Route::delete('/treatment-types/{treatmentType}', [TreatmentTypeController::class, 'destroy'])->name('treatment-types.destroy');
 
     // Admin Users management
     Route::get('/users', [AdminController::class, 'indexAdmins'])->name('users.index');

@@ -1,4 +1,3 @@
-import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
     Collapsible,
@@ -34,7 +33,6 @@ import {
     Stethoscope,
     Syringe,
     Tag,
-    User,
     Users,
 } from 'lucide-react';
 import AppLogo from './app-logo';
@@ -87,12 +85,12 @@ export function AppSidebar() {
         icon: Users,
     });
     mainNavItems.push({
-        title: 'Appointments',
+        title: isDentist ? 'My Appointments' : 'Appointments',
         href: '/appointments',
         icon: Calendar,
     });
     mainNavItems.push({
-        title: 'Treatment Records',
+        title: isDentist ? 'My Treatment Records' : 'Treatment Records',
         href: '/treatment-records',
         icon: ClipboardList,
     });
@@ -143,8 +141,6 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                {user.role_id === 1 && <NavMain items={mainNavItems} />}
-
                 <SidebarGroup className="px-2 py-0">
                     <SidebarGroupLabel>Navigation</SidebarGroupLabel>
                     <SidebarMenu>
@@ -239,24 +235,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                {isDentist && (
-                    <SidebarMenu>
-                        <SidebarMenuItem>
-                            <SidebarMenuButton
-                                asChild
-                                isActive={page.url.startsWith(
-                                    '/dentist/profile',
-                                )}
-                                tooltip={{ children: 'My Profile' }}
-                            >
-                                <Link href="/dentist/profile" prefetch>
-                                    <User />
-                                    <span>My Profile</span>
-                                </Link>
-                            </SidebarMenuButton>
-                        </SidebarMenuItem>
-                    </SidebarMenu>
-                )}
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

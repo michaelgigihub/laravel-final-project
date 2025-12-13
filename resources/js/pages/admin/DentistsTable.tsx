@@ -1,3 +1,4 @@
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
@@ -81,6 +82,19 @@ export default function DentistsTable({
 
     const columns = [
         { accessorKey: 'dentist_id', header: 'ID' },
+        {
+            accessorKey: 'avatar_url',
+            header: 'Photo',
+            cell: ({ row }: { row: { original: Dentist } }) => {
+                const initials = `${row.original.fname?.charAt(0) || ''}${row.original.lname?.charAt(0) || ''}`.toUpperCase();
+                return (
+                    <Avatar className="h-9 w-9">
+                        <AvatarImage src={row.original.avatar_url || undefined} alt={`${row.original.fname} ${row.original.lname}`} />
+                        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                    </Avatar>
+                );
+            },
+        },
         { 
             accessorKey: 'name', 
             header: 'Name',

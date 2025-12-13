@@ -35,6 +35,7 @@ export interface User {
     name: string;
     email: string;
     avatar?: string;
+    avatar_url?: string;
     email_verified_at: string | null;
     two_factor_enabled?: boolean;
     created_at: string;
@@ -69,6 +70,7 @@ export interface Dentist {
     email: string;
     employment_status: string | null;
     hire_date: string | null;
+    avatar_url: string | null;
 }
 
 export interface DentistFormData {

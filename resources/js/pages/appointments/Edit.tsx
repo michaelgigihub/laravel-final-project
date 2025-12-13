@@ -5,6 +5,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -139,10 +140,11 @@ export default function EditAppointment({ appointment, dentists, treatmentTypes,
                                 <Label htmlFor="appointment_start_datetime">
                                     Appointment Date & Time <span className="text-destructive">*</span>
                                 </Label>
-                                <Input
-                                    type="datetime-local"
-                                    value={form.data.appointment_start_datetime}
-                                    onChange={(e) => form.setData('appointment_start_datetime', e.target.value)}
+                                <DateTimePicker
+                                    value={form.data.appointment_start_datetime ? new Date(form.data.appointment_start_datetime) : undefined}
+                                    onChange={(date) => form.setData('appointment_start_datetime', date ? date.toISOString() : '')}
+                                    placeholder="Select date and time"
+                                    disablePast
                                 />
                                 {(form.errors.appointment_start_datetime || errors.appointment_start_datetime) && (
                                     <p className="text-sm text-destructive">

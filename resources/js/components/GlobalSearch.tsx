@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { Calendar, Search, Stethoscope, Users, X } from 'lucide-react';
+import { Calendar, Search, Stethoscope, Users, X, FileText } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 
 interface SearchResult {
     id: number;
-    type: 'patient' | 'dentist' | 'appointment';
+    type: 'patient' | 'dentist' | 'appointment' | 'page';
     title: string;
     subtitle: string;
     url: string;
@@ -27,10 +27,10 @@ export function GlobalSearch() {
     const [selectedIndex, setSelectedIndex] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
 
-    // Keyboard shortcut to open (Ctrl+K or Cmd+K)
+    // Keyboard shortcut to open (Ctrl+P or Cmd+P)
     useEffect(() => {
         const down = (e: KeyboardEvent) => {
-            if ((e.key === 'k' && (e.metaKey || e.ctrlKey)) || e.key === '/') {
+            if ((e.key === 'p' && (e.metaKey || e.ctrlKey)) || e.key === '/') {
                 e.preventDefault();
                 setOpen((o) => !o);
             }
@@ -112,6 +112,8 @@ export function GlobalSearch() {
                 return <Stethoscope className="size-4 text-green-500" />;
             case 'appointment':
                 return <Calendar className="size-4 text-purple-500" />;
+            case 'page':
+                return <FileText className="size-4 text-orange-500" />;
             default:
                 return <Search className="size-4" />;
         }
@@ -125,6 +127,8 @@ export function GlobalSearch() {
                 return 'Dentist';
             case 'appointment':
                 return 'Appointment';
+            case 'page':
+                return 'Page';
             default:
                 return type;
         }
@@ -141,7 +145,7 @@ export function GlobalSearch() {
                 <Search className="size-4 xl:mr-2" />
                 <span className="hidden xl:inline-flex">Search...</span>
                 <kbd className="pointer-events-none absolute right-1.5 top-2 hidden h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 xl:flex">
-                    <span className="text-xs">⌘</span>K
+                    <span className="text-xs">⌘</span>P
                 </kbd>
             </Button>
 

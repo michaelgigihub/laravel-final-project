@@ -82,15 +82,7 @@ class StoreAppointmentRequest extends FormRequest
                 return;
             }
 
-            // Check for overlapping appointments for the same patient
-            $overlapping = Appointment::where('patient_id', $this->patient_id)
-                ->where('status', '!=', 'Cancelled')
-                ->whereDate('appointment_start_datetime', $datetime->toDateString())
-                ->exists();
-                
-            if ($overlapping) {
-                $validator->errors()->add('patient_id', 'This patient already has an appointment scheduled on this date.');
-            }
+            // Overlapping appointment check removed to allow multiple appointments per day
         });
     }
 

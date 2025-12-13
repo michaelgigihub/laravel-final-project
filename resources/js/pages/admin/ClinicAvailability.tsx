@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -224,6 +225,11 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                                                         disabled={availabilityForm.data.is_closed}
                                                         className="w-32"
                                                     />
+                                                    {availabilityForm.errors.open_time && (
+                                                        <p className="text-xs text-destructive mt-1">
+                                                            {availabilityForm.errors.open_time}
+                                                        </p>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Input
@@ -235,6 +241,11 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                                                         disabled={availabilityForm.data.is_closed}
                                                         className="w-32"
                                                     />
+                                                    {availabilityForm.errors.close_time && (
+                                                        <p className="text-xs text-destructive mt-1">
+                                                            {availabilityForm.errors.close_time}
+                                                        </p>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex justify-center gap-2">
@@ -341,12 +352,11 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                                     <div className="grid gap-4 py-4">
                                         <div className="grid gap-2">
                                             <Label htmlFor="date">Date</Label>
-                                            <Input
-                                                id="date"
-                                                type="date"
+                                            <DatePicker
                                                 value={closureForm.data.date}
-                                                onChange={(e) => closureForm.setData('date', e.target.value)}
-                                                min={new Date().toISOString().split('T')[0]}
+                                                onChange={(date) => closureForm.setData('date', date ? date.toISOString().split('T')[0] : '')}
+                                                placeholder="Select closure date"
+                                                disablePast
                                             />
                                             {closureForm.errors.date && (
                                                 <p className="text-sm text-destructive">{closureForm.errors.date}</p>

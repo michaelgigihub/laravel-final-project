@@ -19,7 +19,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { Spinner } from '@/components/ui/spinner';
 import { Check, ChevronsUpDown, X, CalendarIcon } from 'lucide-react';
 import type { DentistProfileProps } from '@/types';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import {
     Award,
     Briefcase,
@@ -29,6 +29,7 @@ import {
     Shield,
     User,
     Pencil,
+    Camera,
     Save,
     XCircle,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ import admin from '@/routes/admin';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import { toast } from 'sonner';
+import { ImageCropDialog } from '@/components/ImageCropDialog';
 
 // Define strict types for props since we are adding new ones
 interface ExtendedDentistProfileProps extends DentistProfileProps {
@@ -169,6 +171,10 @@ export default function DentistProfile({
 }: ExtendedDentistProfileProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [cropDialogOpen, setCropDialogOpen] = useState(false);
+    const [imageToCrop, setImageToCrop] = useState<string | null>(null);
 
     const breadcrumbs: BreadcrumbItem[] = useMemo(() => {
         const items: BreadcrumbItem[] = [
@@ -196,7 +202,7 @@ export default function DentistProfile({
         return items;
     }, [viewMode]);
 
-    const { data, setData, put, processing, errors, reset } = useForm({
+    const { data, setData, processing, errors, reset } = useForm({
         fname: dentist.fname,
         mname: dentist.mname || '',
         lname: dentist.lname,
@@ -231,9 +237,34 @@ export default function DentistProfile({
             ? `/admin/dentists/${dentist.id}` 
             : '/dentist/profile';
         
-        put(endpoint, {
+        // Use FormData for file uploads
+        const formData = new FormData();
+        formData.append('_method', 'PUT');
+        formData.append('fname', data.fname);
+        formData.append('mname', data.mname || '');
+        formData.append('lname', data.lname);
+        formData.append('gender', data.gender);
+        formData.append('contact_number', data.contact_number || '');
+        
+        if (viewMode === 'admin') {
+            formData.append('email', data.email);
+            formData.append('employment_status', data.employment_status || '');
+            formData.append('hire_date', data.hire_date || '');
+            data.specialization_ids.forEach((id, index) => {
+                formData.append(`specialization_ids[${index}]`, id.toString());
+            });
+        }
+        
+        if (avatarFile) {
+            formData.append('avatar', avatarFile);
+        }
+        
+        router.post(endpoint, formData, {
+            preserveScroll: true,
             onSuccess: () => {
                 setIsEditing(false);
+                setAvatarFile(null);
+                setAvatarPreview(null);
                 toast.success('Profile updated successfully', {
                     description: 'The profile has been saved.',
                 });
@@ -248,7 +279,35 @@ export default function DentistProfile({
 
     const handleCancel = () => {
         reset();
+        setAvatarFile(null);
+        setAvatarPreview(null);
+        setImageToCrop(null);
         setIsEditing(false);
+    };
+
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Read the file and open the crop dialog
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImageToCrop(reader.result as string);
+                setCropDialogOpen(true);
+            };
+            reader.readAsDataURL(file);
+        }
+        // Reset input so the same file can be selected again
+        e.target.value = '';
+    };
+
+    const handleCropComplete = (croppedBlob: Blob) => {
+        // Convert blob to file
+        const croppedFile = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
+        setAvatarFile(croppedFile);
+        // Create preview from blob
+        const previewUrl = URL.createObjectURL(croppedBlob);
+        setAvatarPreview(previewUrl);
+        setImageToCrop(null);
     };
 
     const toggleSpecialization = (id: number) => {
@@ -301,15 +360,33 @@ export default function DentistProfile({
                         <Card className="md:col-span-1 h-full">
                             <CardContent className="pt-6">
                                 <div className="flex flex-col items-center text-center">
-                                    <Avatar className="mb-4 h-32 w-32">
+                                <div className="relative mb-4">
+                                    <Avatar className="h-32 w-32">
                                         <AvatarImage
-                                            src={dentist.avatar_url || undefined}
+                                            src={avatarPreview || dentist.avatar_url || undefined}
                                             alt={dentist.name}
                                         />
                                         <AvatarFallback className="text-2xl">
                                             {getInitials()}
                                         </AvatarFallback>
                                     </Avatar>
+                                    {isEditing && (
+                                        <label
+                                            htmlFor="avatar-upload"
+                                            className="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
+                                            title="Change profile picture"
+                                        >
+                                            <Camera className="h-4 w-4" />
+                                            <input
+                                                id="avatar-upload"
+                                                type="file"
+                                                accept="image/jpeg,image/jpg,image/png,image/gif"
+                                                onChange={handleAvatarChange}
+                                                className="sr-only"
+                                            />
+                                        </label>
+                                    )}
+                                </div>
                                     <h2 className="mb-1 text-2xl font-bold">
                                         {dentist.name}
                                     </h2>
@@ -700,6 +777,16 @@ export default function DentistProfile({
                     </div>
                 </div>
             </div>
+
+            {/* Image Crop Dialog */}
+            {imageToCrop && (
+                <ImageCropDialog
+                    open={cropDialogOpen}
+                    onOpenChange={setCropDialogOpen}
+                    imageSrc={imageToCrop}
+                    onCropComplete={handleCropComplete}
+                />
+            )}
         </AppLayout>
     );
 }

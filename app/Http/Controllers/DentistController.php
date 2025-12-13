@@ -150,15 +150,27 @@ class DentistController extends Controller
         $user = $request->user();
         $validated = $request->validated();
 
-        // Update user basic info only (personal information)
-        // Professional information (employment_status, hire_date, specializations) can only be edited by admins
-        $user->update([
+        // Handle avatar upload if provided
+        $updateData = [
             'fname' => $validated['fname'],
             'mname' => $validated['mname'] ?? null,
             'lname' => $validated['lname'],
             'gender' => $validated['gender'],
             'contact_number' => $validated['contact_number'] ?? null,
-        ]);
+        ];
+
+        if (isset($validated['avatar']) && $validated['avatar'] instanceof \Illuminate\Http\UploadedFile) {
+            // Delete old avatar if exists
+            if ($user->avatar_path) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($user->avatar_path);
+            }
+            // Store new avatar
+            $updateData['avatar_path'] = $validated['avatar']->store('avatars/dentists', 'public');
+        }
+
+        // Update user basic info only (personal information)
+        // Professional information (employment_status, hire_date, specializations) can only be edited by admins
+        $user->update($updateData);
 
         return redirect()->route('dentist.profile')->with('success', 'Profile updated successfully.');
     }

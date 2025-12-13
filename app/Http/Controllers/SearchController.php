@@ -25,6 +25,46 @@ class SearchController extends Controller
         $user = $request->user();
         $isAdmin = $user->role_id === 1;
 
+        // Search Pages (Navigation)
+        $pages = [
+            ['title' => 'Dashboard', 'url' => '/dashboard', 'keywords' => 'home start stats', 'roles' => [1, 2]],
+            ['title' => 'Appointments', 'url' => '/appointments', 'keywords' => 'calendar schedule booking', 'roles' => [1, 2]],
+            ['title' => 'Patients', 'url' => '/patients', 'keywords' => 'people clients', 'roles' => [1, 2]],
+            ['title' => 'Treatment Records', 'url' => '/treatment-records', 'keywords' => 'history medical logs', 'roles' => [1, 2]],
+            ['title' => 'Clinic Availability', 'url' => '/admin/clinic-availability', 'keywords' => 'hours schedule open close', 'roles' => [1, 2]],
+            ['title' => 'Specializations', 'url' => '/admin/specializations', 'keywords' => 'categories types', 'roles' => [1, 2]],
+            ['title' => 'Treatment Types', 'url' => '/admin/treatment-types', 'keywords' => 'services procedures prices', 'roles' => [1, 2]],
+            ['title' => 'Reports', 'url' => '/admin/reports', 'keywords' => 'analytics stats data export', 'roles' => [1, 2]],
+            ['title' => 'Manage Dentists', 'url' => '/admin/dentists', 'keywords' => 'doctors staff employees', 'roles' => [1]],
+            ['title' => 'Manage Users', 'url' => '/admin/users', 'keywords' => 'admins accounts', 'roles' => [1]],
+            ['title' => 'Audit Logs', 'url' => '/admin/audit-logs', 'keywords' => 'history tracking security', 'roles' => [1]],
+            ['title' => 'My Profile', 'url' => '/dentist/profile', 'keywords' => 'account settings me', 'roles' => [2]],
+        ];
+
+        $pageResults = collect($pages)
+            ->filter(function ($page) use ($query, $user) {
+                // Check role access
+                if (!in_array($user->role_id, $page['roles'])) {
+                    return false;
+                }
+                // Check match
+                return stripos($page['title'], $query) !== false || 
+                       stripos($page['keywords'], $query) !== false;
+            })
+            ->map(function ($page) {
+                return [
+                    'id' => rand(1000, 9999), // Randomized ID for key uniqueness
+                    'type' => 'page',
+                    'title' => $page['title'],
+                    'subtitle' => 'Navigation',
+                    'url' => $page['url'],
+                ];
+            })
+            ->values()
+            ->toArray();
+
+        $results = array_merge($results, $pageResults);
+
         // Search patients
         $patients = Patient::where(function ($q) use ($query) {
             $q->where('fname', 'like', "%{$query}%")

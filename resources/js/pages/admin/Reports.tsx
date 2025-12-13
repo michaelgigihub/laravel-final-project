@@ -6,7 +6,7 @@ import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -51,20 +51,18 @@ function ReportCard({ title, description, icon, href, hasDateRange = false }: Re
                     <div className="grid grid-cols-2 gap-4 mb-4">
                         <div className="space-y-2">
                             <Label htmlFor={`${title}-start`}>Start Date</Label>
-                            <Input
-                                id={`${title}-start`}
-                                type="date"
+                            <DatePicker
                                 value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
+                                onChange={(date) => setStartDate(date ? date.toISOString().split('T')[0] : '')}
+                                placeholder="Select start date"
                             />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor={`${title}-end`}>End Date</Label>
-                            <Input
-                                id={`${title}-end`}
-                                type="date"
+                            <DatePicker
                                 value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
+                                onChange={(date) => setEndDate(date ? date.toISOString().split('T')[0] : '')}
+                                placeholder="Select end date"
                             />
                         </div>
                     </div>

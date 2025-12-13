@@ -40,4 +40,16 @@ class TreatmentTypeController extends Controller
 
         return back()->with('success', 'Treatment status updated successfully!');
     }
+
+    public function destroy(TreatmentType $treatmentType)
+    {
+        // Check if any treatment records use this type
+        if ($treatmentType->treatmentRecords()->count() > 0) {
+            return back()->withErrors(['error' => 'Cannot delete treatment type that has treatment records.']);
+        }
+
+        $treatmentType->delete();
+
+        return back()->with('success', 'Treatment type deleted successfully!');
+    }
 }

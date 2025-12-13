@@ -10,6 +10,7 @@ use App\Models\TreatmentType;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -20,12 +21,18 @@ class TreatmentRecordController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Auth::user();
+
         $query = TreatmentRecord::with([
             'appointment.patient:id,fname,mname,lname',
             'appointment.dentist:id,fname,mname,lname',
             'treatmentType:id,name',
-        ])->whereHas('appointment', function ($q) {
+        ])->whereHas('appointment', function ($q) use ($user) {
             $q->where('status', 'Completed');
+            // If user is a dentist (role_id = 2), only show their assigned records
+            if ($user->role_id === 2) {
+                $q->where('dentist_id', $user->id);
+            }
         });
 
         // Search by patient name

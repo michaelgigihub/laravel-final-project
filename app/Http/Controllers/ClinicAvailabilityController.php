@@ -23,8 +23,8 @@ class ClinicAvailabilityController extends Controller
                     'id' => $avail->id,
                     'day_of_week' => $avail->day_of_week,
                     'day_name' => $avail->day_name,
-                    'open_time' => $avail->open_time,
-                    'close_time' => $avail->close_time,
+                    'open_time' => $avail->open_time ? substr($avail->open_time, 0, 5) : null,
+                    'close_time' => $avail->close_time ? substr($avail->close_time, 0, 5) : null,
                     'is_closed' => $avail->is_closed,
                 ];
             });

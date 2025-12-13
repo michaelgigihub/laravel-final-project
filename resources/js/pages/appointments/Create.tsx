@@ -1,14 +1,18 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
+import { useState, useEffect } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { TimePicker } from '@/components/ui/time-picker';
+import { CalendarIcon, Clock } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import {
     Select,
     SelectContent,
@@ -45,8 +49,20 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function CreateAppointment({ patients, dentists, treatmentTypes, errors = {} }: CreateAppointmentProps) {
+    // Get params from URL query for pre-selection
+    const { url } = usePage();
+    const searchParams = new URLSearchParams(url.split('?')[1] || '');
+    const preSelectedPatientId = searchParams.get('patient_id') || '';
+    const preSelectedDate = searchParams.get('date') || '';
+    const preSelectedTime = searchParams.get('time') || '';
+
+    // Separate date and time state
+    const [appointmentDate, setAppointmentDate] = useState<string>(preSelectedDate);
+    const [appointmentTime, setAppointmentTime] = useState<string>(preSelectedTime);
+    const [dateOpen, setDateOpen] = useState(false);
+
     const form = useForm({
-        patient_id: '',
+        patient_id: preSelectedPatientId,
         dentist_id: '',
         appointment_start_datetime: '',
         treatment_type_ids: [] as number[],
@@ -56,6 +72,17 @@ export default function CreateAppointment({ patients, dentists, treatmentTypes, 
     const getFullName = (person: Person) => {
         return [person.fname, person.mname, person.lname].filter(Boolean).join(' ');
     };
+
+    // innovative solution: Sync form data when date or time changes
+    // This ensures that when the user submits, the data is already in the form state
+    // avoiding issues with transform() not persisting or being ignored
+    useEffect(() => {
+       if (appointmentDate && appointmentTime) {
+           form.setData('appointment_start_datetime', `${appointmentDate}T${appointmentTime}`);
+       } else {
+           form.setData('appointment_start_datetime', '');
+       }
+    }, [appointmentDate, appointmentTime]);
 
     const toggleTreatmentType = (id: number) => {
         const current = form.data.treatment_type_ids;
@@ -138,21 +165,100 @@ export default function CreateAppointment({ patients, dentists, treatmentTypes, 
                                 )}
                             </div>
 
-                            {/* Date/Time */}
-                            <div className="space-y-2">
-                                <Label htmlFor="appointment_start_datetime">
-                                    Appointment Date & Time <span className="text-destructive">*</span>
-                                </Label>
-                                <Input
-                                    type="datetime-local"
-                                    value={form.data.appointment_start_datetime}
-                                    onChange={(e) => form.setData('appointment_start_datetime', e.target.value)}
-                                />
-                                {(form.errors.appointment_start_datetime || errors.appointment_start_datetime) && (
-                                    <p className="text-sm text-destructive">
-                                        {form.errors.appointment_start_datetime || errors.appointment_start_datetime}
-                                    </p>
-                                )}
+                            {/* Date & Time - Separate fields on same row */}
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Date Picker */}
+                                <div className="space-y-2">
+                                    <Label>
+                                        Appointment Date <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                className={cn(
+                                                    'w-full justify-start text-left font-normal',
+                                                    !appointmentDate && 'text-muted-foreground'
+                                                )}
+                                            >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {appointmentDate
+                                                    ? new Date(appointmentDate).toLocaleDateString('en-US', {
+                                                          year: 'numeric',
+                                                          month: 'long',
+                                                          day: 'numeric',
+                                                      })
+                                                    : 'Select date'}
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                                mode="single"
+                                                selected={appointmentDate ? new Date(appointmentDate) : undefined}
+                                                onSelect={(date) => {
+                                                    if (date) {
+                                                        // Use local time components to avoid timezone shifts
+                                                        const year = date.getFullYear();
+                                                        const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                        const day = String(date.getDate()).padStart(2, '0');
+                                                        setAppointmentDate(`${year}-${month}-${day}`);
+                                                    }
+                                                    setDateOpen(false);
+                                                }}
+                                                disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                                                initialFocus
+                                            />
+                                        </PopoverContent>
+                                    </Popover>
+                                    {(form.errors.appointment_start_datetime || errors.appointment_start_datetime) && (
+                                        <p className="text-sm text-destructive">
+                                            {form.errors.appointment_start_datetime || errors.appointment_start_datetime}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Time Picker */}
+                                <div className="space-y-2">
+                                    <Label>
+                                        Appointment Time <span className="text-destructive">*</span>
+                                    </Label>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button
+                                                variant="outline"
+                                                className={cn(
+                                                    'w-full justify-between text-left font-normal',
+                                                    !appointmentTime && 'text-muted-foreground'
+                                                )}
+                                            >
+                                                <span>
+                                                    {appointmentTime ? (() => {
+                                                        const [h, m] = appointmentTime.split(':');
+                                                        const hour = parseInt(h);
+                                                        const period = hour >= 12 ? 'PM' : 'AM';
+                                                        const hour12 = hour % 12 || 12;
+                                                        return `${hour12.toString().padStart(2, '0')}:${m} ${period}`;
+                                                    })() : '--:-- --'}
+                                                </span>
+                                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                            </Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <div className="p-3 border-b border-border">
+                                                <h4 className="font-medium text-sm text-center mb-2">Select Time</h4>
+                                                <TimePicker
+                                                    value={appointmentTime}
+                                                    onChange={setAppointmentTime}
+                                                />
+                                            </div>
+                                        </PopoverContent>
+                                    </Popover>
+                                    {!appointmentTime && (form.errors.appointment_start_datetime || errors.appointment_start_datetime) && (
+                                        <p className="text-sm text-destructive">
+                                            Please select a time
+                                        </p>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Treatment Types */}

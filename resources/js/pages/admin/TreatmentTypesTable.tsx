@@ -42,7 +42,7 @@ import { dashboard } from '@/routes';
 import { BreadcrumbItem, SharedData, TreatmentType } from '@/types';
 import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { ColumnDef } from '@tanstack/react-table';
-import { MoreHorizontal, Pencil, Plus } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -221,6 +221,9 @@ export default function TreatmentTypesTable({
     const [open, setOpen] = useState(false);
     const [editingTreatment, setEditingTreatment] =
         useState<TreatmentType | null>(null);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [deletingTreatment, setDeletingTreatment] =
+        useState<TreatmentType | null>(null);
     const { data, setData, post, put, processing, errors, reset, clearErrors } =
         useForm({
             name: '',
@@ -268,6 +271,21 @@ export default function TreatmentTypesTable({
                 },
             });
         }
+    };
+
+    const handleDeleteClick = (treatment: TreatmentType) => {
+        setDeletingTreatment(treatment);
+        setDeleteOpen(true);
+    };
+
+    const handleDelete = () => {
+        if (!deletingTreatment) return;
+        router.delete(`/admin/treatment-types/${deletingTreatment.id}`, {
+            onSuccess: () => {
+                setDeleteOpen(false);
+                setDeletingTreatment(null);
+            },
+        });
     };
 
     const columns: ColumnDef<TreatmentType>[] = [
@@ -322,6 +340,13 @@ export default function TreatmentTypesTable({
                             >
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => handleDeleteClick(treatment)}
+                                className="text-destructive focus:text-destructive"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
                             </DropdownMenuItem>
                         </DropdownMenuContent>
                     </DropdownMenu>
@@ -542,6 +567,26 @@ export default function TreatmentTypesTable({
                     </div>
                 </div>
             </div>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Delete Treatment Type</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "{deletingTreatment?.name}"? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete}>
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }

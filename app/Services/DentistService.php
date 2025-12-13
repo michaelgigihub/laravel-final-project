@@ -106,6 +106,19 @@ class DentistService
         DB::beginTransaction();
 
         try {
+            // Handle avatar upload if provided
+            if (isset($validated['avatar']) && $validated['avatar'] instanceof \Illuminate\Http\UploadedFile) {
+                // Delete old avatar if exists
+                if ($dentist->avatar_path) {
+                    \Illuminate\Support\Facades\Storage::disk('public')->delete($dentist->avatar_path);
+                }
+                // Store new avatar
+                $validated['avatar_path'] = $validated['avatar']->store('avatars/dentists', 'public');
+                unset($validated['avatar']);
+            } else {
+                unset($validated['avatar']);
+            }
+
             $dentist->update($validated);
 
             // Update specializations if provided

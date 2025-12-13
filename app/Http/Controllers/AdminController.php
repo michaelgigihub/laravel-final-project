@@ -66,6 +66,7 @@ class AdminController extends Controller
                 'mname' => $dentist->mname,
                 'lname' => $dentist->lname,
                 'name' => trim("{$dentist->fname} {$dentist->lname}"),
+                'avatar_url' => $dentist->avatar_url,
                 'specialization' => $dentist->specializations->pluck('name')->join(', '),
                 'specialization_ids' => $dentist->specializations->pluck('id')->toArray(),
                 'contact_number' => $dentist->contact_number,

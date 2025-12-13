@@ -11,6 +11,7 @@ use App\Models\TreatmentRecord;
 use App\Models\TreatmentType;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
 class AppointmentController extends Controller
@@ -20,11 +21,18 @@ class AppointmentController extends Controller
      */
     public function index(Request $request)
     {
+        $user = Auth::user();
+
         $query = Appointment::with([
             'patient:id,fname,mname,lname',
             'dentist:id,fname,mname,lname',
             'treatmentTypes:id,name'
         ]);
+
+        // If user is a dentist (role_id = 2), only show their assigned appointments
+        if ($user->role_id === 2) {
+            $query->where('dentist_id', $user->id);
+        }
 
         // Filter by date range
         if ($request->filled('start_date')) {

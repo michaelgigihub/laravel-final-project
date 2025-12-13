@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -276,11 +277,11 @@ export default function ShowPatient({ patient }: ShowPatientProps) {
                                     </Label>
                                     {isEditing ? (
                                         <>
-                                            <Input
-                                                type="date"
+                                            <DatePicker
                                                 value={data.date_of_birth}
-                                                onChange={(e) => setData('date_of_birth', e.target.value)}
-                                                className={errors.date_of_birth ? 'border-red-500' : ''}
+                                                onChange={(date) => setData('date_of_birth', date ? date.toISOString().split('T')[0] : '')}
+                                                placeholder="Select date of birth"
+                                                disableFuture
                                             />
                                             {errors.date_of_birth && <span className="text-xs text-red-500">{errors.date_of_birth}</span>}
                                         </>

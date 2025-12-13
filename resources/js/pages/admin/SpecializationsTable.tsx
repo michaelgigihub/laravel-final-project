@@ -1,21 +1,29 @@
 import { Button } from '@/components/ui/button';
-
 import { DataTable } from '@/components/ui/data-table';
 import {
     Dialog,
     DialogContent,
+    DialogDescription,
+    DialogFooter,
     DialogHeader,
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import admin from '@/routes/admin';
 import { dashboard } from '@/routes';
 import { SharedData, type BreadcrumbItem, type Specialization } from '@/types';
-import { Head, usePage, useForm } from '@inertiajs/react';
-import { Plus } from 'lucide-react';
+import { Head, usePage, useForm, router } from '@inertiajs/react';
+import { MoreHorizontal, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -39,6 +47,9 @@ export default function SpecializationsTable({
     const { auth } = usePage<SharedData>().props;
     const user = auth.user;
     const [open, setOpen] = useState(false);
+    const [editOpen, setEditOpen] = useState(false);
+    const [deleteOpen, setDeleteOpen] = useState(false);
+    const [selectedSpecialization, setSelectedSpecialization] = useState<Specialization | null>(null);
     
     // Initialize with one empty specialization input
     const { data, setData, post, processing, errors, reset } = useForm<{
@@ -47,10 +58,83 @@ export default function SpecializationsTable({
         names: [''],
     });
 
-    const columns = [
+    const editForm = useForm<{ name: string }>({
+        name: '',
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const columns: any[] = [
         { accessorKey: 'id', header: 'ID' },
         { accessorKey: 'name', header: 'Name' },
     ];
+
+    // Add actions column if admin
+    if (user.role_id === 1) {
+        columns.push({
+            id: 'actions',
+            header: '',
+            cell: ({ row }: { row: { original: Specialization } }) => {
+                const specialization = row.original;
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => handleEdit(specialization)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={() => handleDeleteClick(specialization)}
+                                className="text-destructive focus:text-destructive"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                );
+            },
+        } as typeof columns[0]);
+    }
+
+    const handleEdit = (specialization: Specialization) => {
+        setSelectedSpecialization(specialization);
+        editForm.setData('name', specialization.name);
+        setEditOpen(true);
+    };
+
+    const handleDeleteClick = (specialization: Specialization) => {
+        setSelectedSpecialization(specialization);
+        setDeleteOpen(true);
+    };
+
+    const handleEditSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedSpecialization) return;
+        editForm.put(`/admin/specializations/${selectedSpecialization.id}`, {
+            onSuccess: () => {
+                setEditOpen(false);
+                setSelectedSpecialization(null);
+                editForm.reset();
+            },
+        });
+    };
+
+    const handleDelete = () => {
+        if (!selectedSpecialization) return;
+        router.delete(`/admin/specializations/${selectedSpecialization.id}`, {
+            onSuccess: () => {
+                setDeleteOpen(false);
+                setSelectedSpecialization(null);
+            },
+        });
+    };
 
     const addField = () => {
         setData('names', [...data.names, '']);
@@ -168,6 +252,61 @@ export default function SpecializationsTable({
                     </div>
                 </div>
             </div>
+
+            {/* Edit Dialog */}
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Specialization</DialogTitle>
+                        <DialogDescription>
+                            Update the specialization name.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleEditSubmit}>
+                        <div className="grid gap-4 py-4">
+                            <FieldGroup>
+                                <FieldLabel>Name</FieldLabel>
+                                <Input
+                                    value={editForm.data.name}
+                                    onChange={(e) => editForm.setData('name', e.target.value)}
+                                    placeholder="Specialization Name"
+                                    required
+                                />
+                                {editForm.errors.name && (
+                                    <p className="text-sm text-destructive mt-1">
+                                        {editForm.errors.name}
+                                    </p>
+                                )}
+                            </FieldGroup>
+                        </div>
+                        <DialogFooter>
+                            <Button type="submit" disabled={editForm.processing}>
+                                {editForm.processing ? 'Saving...' : 'Save Changes'}
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Delete Specialization</DialogTitle>
+                        <DialogDescription>
+                            Are you sure you want to delete "{selectedSpecialization?.name}"? This action cannot be undone.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="gap-2">
+                        <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button variant="destructive" onClick={handleDelete}>
+                            Delete
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </AppLayout>
     );
 }
