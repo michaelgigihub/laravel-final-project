@@ -1,4 +1,10 @@
 import { Button } from '@/components/ui/button';
+import {
+    Command,
+    CommandGroup,
+    CommandItem,
+    CommandList,
+} from '@/components/ui/command';
 import { DataTable } from '@/components/ui/data-table';
 import {
     Dialog,
@@ -9,6 +15,14 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
     Field,
     FieldError,
@@ -16,24 +30,19 @@ import {
     FieldLabel,
 } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import {
-    Command,
-    CommandGroup,
-    CommandItem,
-    CommandList,
-} from '@/components/ui/command';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { Textarea } from '@/components/ui/textarea';
+import { useMediaQuery } from '@/hooks/use-media-query';
 import AppLayout from '@/layouts/app-layout';
 import { dashboard } from '@/routes';
-import { BreadcrumbItem, TreatmentType } from '@/types';
-import { Head, router, useForm } from '@inertiajs/react';
+import { BreadcrumbItem, SharedData, TreatmentType } from '@/types';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { ColumnDef } from '@tanstack/react-table';
-import { Plus } from 'lucide-react';
+import { MoreHorizontal, Pencil, Plus } from 'lucide-react';
 import { useState } from 'react';
 
 const breadcrumbs: BreadcrumbItem[] = [
@@ -51,20 +60,13 @@ interface TreatmentTypesTableProps {
     treatmentTypes: TreatmentType[];
 }
 
-import {
-    Drawer,
-    DrawerContent,
-    DrawerTrigger,
-} from '@/components/ui/drawer';
-import { useMediaQuery } from '@/hooks/use-media-query';
-
-// ... (other imports)
-
 interface TreatmentStatusCellProps {
     treatmentType: TreatmentType;
 }
 
 function TreatmentStatusCell({ treatmentType }: TreatmentStatusCellProps) {
+    const { auth } = usePage<SharedData>().props;
+    const user = auth.user;
     const [open, setOpen] = useState(false);
     const isDesktop = useMediaQuery('(min-width: 768px)');
     // Ensure isActive is treated as a boolean.
@@ -89,6 +91,19 @@ function TreatmentStatusCell({ treatmentType }: TreatmentStatusCellProps) {
 
     const selectedStatus =
         statuses.find((s) => s.value === isActive) || statuses[0];
+
+    if (user.role_id !== 1) {
+        return (
+            <div
+                className={`flex h-7 w-[100px] items-center justify-start rounded-full border px-3 text-xs font-semibold ${selectedStatus.className}`}
+            >
+                <span
+                    className={`mr-2 h-2 w-2 rounded-full ${selectedStatus.dotClass}`}
+                />
+                {selectedStatus.label}
+            </div>
+        );
+    }
 
     if (isDesktop) {
         return (
@@ -201,23 +216,58 @@ function StatusList({
 export default function TreatmentTypesTable({
     treatmentTypes,
 }: TreatmentTypesTableProps) {
+    const { auth } = usePage<SharedData>().props;
+    const user = auth.user;
     const [open, setOpen] = useState(false);
-    const { data, setData, post, processing, errors, reset } = useForm({
-        name: '',
-        description: '',
-        standard_cost: '',
-        duration_minutes: '',
-        is_active: true,
-    });
+    const [editingTreatment, setEditingTreatment] =
+        useState<TreatmentType | null>(null);
+    const { data, setData, post, put, processing, errors, reset, clearErrors } =
+        useForm({
+            name: '',
+            description: '',
+            standard_cost: '',
+            duration_minutes: '',
+            is_active: true,
+        });
+
+    const handleAdd = () => {
+        setEditingTreatment(null);
+        reset();
+        clearErrors();
+        setOpen(true);
+    };
+
+    const handleEdit = (treatment: TreatmentType) => {
+        setEditingTreatment(treatment);
+        setData({
+            name: treatment.name,
+            description: treatment.description,
+            standard_cost: String(treatment.standard_cost),
+            duration_minutes: String(treatment.duration_minutes),
+            is_active: !!treatment.is_active,
+        });
+        clearErrors();
+        setOpen(true);
+    };
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
-        post('/admin/treatment-types', {
-            onSuccess: () => {
-                setOpen(false);
-                reset();
-            },
-        });
+        if (editingTreatment) {
+            put(`/admin/treatment-types/${editingTreatment.id}`, {
+                onSuccess: () => {
+                    setOpen(false);
+                    reset();
+                    setEditingTreatment(null);
+                },
+            });
+        } else {
+            post('/admin/treatment-types', {
+                onSuccess: () => {
+                    setOpen(false);
+                    reset();
+                },
+            });
+        }
     };
 
     const columns: ColumnDef<TreatmentType>[] = [
@@ -245,9 +295,40 @@ export default function TreatmentTypesTable({
         {
             accessorKey: 'is_active',
             header: 'Status',
-            cell: ({ row }) => <TreatmentStatusCell treatmentType={row.original} />,
+            cell: ({ row }) => (
+                <TreatmentStatusCell treatmentType={row.original} />
+            ),
         },
     ];
+
+    if (user.role_id === 1) {
+        columns.push({
+            id: 'actions',
+            cell: ({ row }) => {
+                const treatment = row.original;
+
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem
+                                onClick={() => handleEdit(treatment)}
+                            >
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                );
+            },
+        });
+    }
 
     return (
         <AppLayout breadcrumbs={breadcrumbs}>
@@ -262,18 +343,25 @@ export default function TreatmentTypesTable({
                             Manage dental treatment types and costs
                         </p>
                     </div>
-                    <Dialog open={open} onOpenChange={setOpen}>
-                        <DialogTrigger asChild>
-                            <Button className="gap-2">
-                                <Plus className="size-4" />
-                                Add Treatment Type
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-[600px]">
+                    {user.role_id === 1 && (
+                        <Dialog open={open} onOpenChange={setOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="gap-2" onClick={handleAdd}>
+                                    <Plus className="size-4" />
+                                    Add Treatment Type
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-[600px]">
                             <DialogHeader>
-                                <DialogTitle>Add Treatment Type</DialogTitle>
+                                <DialogTitle>
+                                    {editingTreatment
+                                        ? 'Edit Treatment Type'
+                                        : 'Add Treatment Type'}
+                                </DialogTitle>
                                 <DialogDescription>
-                                    Create a new treatment type for the clinic.
+                                    {editingTreatment
+                                        ? 'Update the details of the treatment type.'
+                                        : 'Create a new treatment type for the clinic.'}
                                 </DialogDescription>
                             </DialogHeader>
                             <form onSubmit={submit}>
@@ -304,7 +392,9 @@ export default function TreatmentTypesTable({
                                             />
                                         </Field>
 
-                                        <Field data-invalid={!!errors.description}>
+                                        <Field
+                                            data-invalid={!!errors.description}
+                                        >
                                             <FieldLabel>
                                                 Description{' '}
                                                 <span className="text-destructive">
@@ -333,7 +423,11 @@ export default function TreatmentTypesTable({
                                         </Field>
 
                                         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                            <Field data-invalid={!!errors.standard_cost}>
+                                            <Field
+                                                data-invalid={
+                                                    !!errors.standard_cost
+                                                }
+                                            >
                                                 <FieldLabel>
                                                     Standard Cost{' '}
                                                     <span className="text-destructive">
@@ -424,20 +518,23 @@ export default function TreatmentTypesTable({
                                                 />
                                             </Field>
                                         </div>
-
-
                                     </FieldGroup>
                                 </div>
                                 <DialogFooter>
                                     <Button type="submit" disabled={processing}>
                                         {processing
-                                            ? 'Creating...'
-                                            : 'Create Treatment Type'}
+                                            ? editingTreatment
+                                                ? 'Updating...'
+                                                : 'Creating...'
+                                            : editingTreatment
+                                              ? 'Update Treatment Type'
+                                              : 'Create Treatment Type'}
                                     </Button>
                                 </DialogFooter>
                             </form>
                         </DialogContent>
                     </Dialog>
+                    )}
                 </div>
                 <div className="relative flex-1 overflow-hidden rounded-xl border border-brand-dark/20 bg-card shadow-[0_22px_48px_-30px_rgba(38,41,47,0.6)] transition-shadow dark:border-brand-light/20 dark:bg-card/60 dark:shadow-[0_18px_42px_-28px_rgba(8,9,12,0.78)]">
                     <div className="h-full overflow-auto p-4">

@@ -90,3 +90,11 @@ export const requiredEmailSchema = z
 export const genderSchema = z.enum(['Male', 'Female', 'Other'], {
     message: 'Gender is required',
 });
+
+/**
+ * Reusable password validation schema
+ */
+export const passwordSchema = z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(255, 'Password must not exceed 255 characters');

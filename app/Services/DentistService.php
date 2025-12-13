@@ -12,34 +12,12 @@ use Illuminate\Support\Facades\Hash;
 class DentistService
 {
     protected AdminAuditService $auditService;
+    protected PasswordService $passwordService;
 
-    public function __construct(AdminAuditService $auditService)
+    public function __construct(AdminAuditService $auditService, PasswordService $passwordService)
     {
         $this->auditService = $auditService;
-    }
-
-    /**
-     * Generate a default password for a dentist.
-     * Format: lastname_{4 random digits}
-     * Handles compound last names (e.g., "dela cruz" -> "delacruz")
-     *
-     * @return array ['password' => full password, 'digits' => 4 digits only]
-     */
-    private function generateDefaultPassword(string $lastName): array
-    {
-        // Remove spaces and convert to lowercase for compound last names
-        $normalizedLastName = strtolower(str_replace(' ', '', $lastName));
-
-        // Generate 4 random digits
-        $digits = str_pad(rand(0, 9999), 4, '0', STR_PAD_LEFT);
-
-        // Construct the password
-        $password = $normalizedLastName . '_' . $digits;
-
-        return [
-            'password' => $password,
-            'digits' => $digits,
-        ];
+        $this->passwordService = $passwordService;
     }
 
     /**
@@ -55,7 +33,7 @@ class DentistService
 
         try {
             // Generate default password
-            $passwordData = $this->generateDefaultPassword($validated['lname']);
+            $passwordData = $this->passwordService->generateDefaultPassword($validated['lname']);
 
             // Handle avatar upload if provided
             $avatarPath = null;

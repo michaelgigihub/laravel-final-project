@@ -13,8 +13,8 @@ import { Input } from '@/components/ui/input';
 import AppLayout from '@/layouts/app-layout';
 import admin from '@/routes/admin';
 import { dashboard } from '@/routes';
-import { type BreadcrumbItem, type Specialization } from '@/types';
-import { Head, useForm } from '@inertiajs/react';
+import { SharedData, type BreadcrumbItem, type Specialization } from '@/types';
+import { Head, usePage, useForm } from '@inertiajs/react';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -36,6 +36,8 @@ interface SpecializationsTableProps {
 export default function SpecializationsTable({
     specializations,
 }: SpecializationsTableProps) {
+    const { auth } = usePage<SharedData>().props;
+    const user = auth.user;
     const [open, setOpen] = useState(false);
     
     // Initialize with one empty specialization input
@@ -88,6 +90,7 @@ export default function SpecializationsTable({
                             Manage dental specializations
                         </p>
                     </div>
+                    {user.role_id === 1 && (
                     <Dialog open={open} onOpenChange={setOpen}>
                         <DialogTrigger asChild>
                             <Button className="gap-2">
@@ -157,6 +160,7 @@ export default function SpecializationsTable({
                             </form>
                         </DialogContent>
                     </Dialog>
+                    )}
                 </div>
                 <div className="relative flex-1 overflow-hidden rounded-xl border border-brand-dark/20 bg-card shadow-[0_22px_48px_-30px_rgba(38,41,47,0.6)] transition-shadow dark:border-brand-light/20 dark:bg-card/60 dark:shadow-[0_18px_42px_-28px_rgba(8,9,12,0.78)]">
                     <div className="h-full overflow-auto p-4">

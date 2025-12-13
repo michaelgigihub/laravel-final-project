@@ -8,7 +8,11 @@ use App\Http\Resources\DentistProfileResource;
 use App\Models\AdminAudit;
 use App\Models\Specialization;
 use App\Models\User;
+use App\Http\Controllers\Auth\CreateNewAdminController;
 use App\Services\DentistService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 
 class AdminController extends Controller
@@ -195,5 +199,42 @@ class AdminController extends Controller
         return Inertia::render('admin/AdminAuditLogs', [
             'auditLogs' => $auditLogs,
         ]);
+    }
+
+    /**
+     * Display a listing of admins.
+     */
+    public function indexAdmins()
+    {
+        $admins = User::where('role_id', 1)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($admin) {
+                return [
+                    'id' => $admin->id,
+                    'fname' => $admin->fname,
+                    'mname' => $admin->mname,
+                    'lname' => $admin->lname,
+                    'gender' => $admin->gender,
+                    'email' => $admin->email,
+                    'created_at' => $admin->created_at->format('Y-m-d'),
+                ];
+            });
+
+        return Inertia::render('admin/AdminUsers', [
+            'admins' => $admins,
+        ]);
+    }
+
+
+
+    /**
+     * Store a newly created admin.
+     */
+    public function storeAdmin(Request $request, CreateNewAdminController $creator)
+    {
+        $creator->create($request->all());
+
+        return redirect()->back()->with('success', 'Admin created successfully.');
     }
 }

@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import admin from '@/routes/admin';
-import { type NavItem } from '@/types';
+import { SharedData, type NavItem } from '@/types';
 import { Link, usePage } from '@inertiajs/react';
 import {
     BookOpen,
@@ -34,6 +34,7 @@ import {
     Stethoscope,
     Syringe,
     Tag,
+    Users,
 } from 'lucide-react';
 import AppLogo from './app-logo';
 
@@ -88,7 +89,9 @@ const footerNavItems: NavItem[] = [
 ];
 
 export function AppSidebar() {
-    const page = usePage();
+    const page = usePage<SharedData>();
+    const { auth } = page.props;
+    const user = auth.user;
 
     const isServicesActive = servicesSubItems.some((item) =>
         page.url.startsWith(item.href),
@@ -109,7 +112,7 @@ export function AppSidebar() {
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                {user.role_id === 1 && <NavMain items={mainNavItems} />}
 
                 <SidebarGroup className="px-2 py-0">
                     <SidebarGroupLabel>Management</SidebarGroupLabel>
@@ -158,6 +161,21 @@ export function AppSidebar() {
                                 </CollapsibleContent>
                             </SidebarMenuItem>
                         </Collapsible>
+                        {user.role_id === 1 && (
+                            <SidebarMenuItem>
+                                <SidebarMenuButton
+                                    asChild
+                                    isActive={page.url.startsWith(
+                                        '/admin/users',
+                                    )}
+                                >
+                                    <Link href="/admin/users" prefetch>
+                                        <Users />
+                                        <span>Admin Users</span>
+                                    </Link>
+                                </SidebarMenuButton>
+                            </SidebarMenuItem>
+                        )}
                     </SidebarMenu>
                 </SidebarGroup>
             </SidebarContent>

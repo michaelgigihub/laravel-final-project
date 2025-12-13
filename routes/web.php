@@ -42,16 +42,22 @@ Route::middleware(['auth', 'verified', 'password.changed', 'role:1'])->prefix('a
     Route::put('/dentists/{dentist}', [AdminController::class, 'updateDentist'])->name('dentists.update');
     Route::get('/audit-logs', [AdminController::class, 'indexAuditLogs'])->name('audit.logs');
 
-    // Specializations management
-    Route::get('/specializations', [SpecializationController::class, 'index'])->name('specializations.index');
-
+    // Specializations management (Store)
     Route::post('/specializations', [SpecializationController::class, 'store'])->name('specializations.store');
 
-    // Treatment types management
-    Route::get('/treatment-types', [TreatmentTypeController::class, 'index'])->name('treatment-types.index');
-
+    // Treatment types management (Store/Update)
     Route::post('/treatment-types', [TreatmentTypeController::class, 'store'])->name('treatment-types.store');
     Route::put('/treatment-types/{treatmentType}', [TreatmentTypeController::class, 'update'])->name('treatment-types.update');
+
+    // Admin Users management
+    Route::get('/users', [AdminController::class, 'indexAdmins'])->name('users.index');
+    Route::post('/users', [AdminController::class, 'storeAdmin'])->name('users.store');
+});
+
+// Shared Management Routes (Admin & Dentist)
+Route::middleware(['auth', 'verified', 'password.changed', 'role:1,2'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/specializations', [SpecializationController::class, 'index'])->name('specializations.index');
+    Route::get('/treatment-types', [TreatmentTypeController::class, 'index'])->name('treatment-types.index');
 });
 
 // Dentist-only routes
