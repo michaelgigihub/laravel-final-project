@@ -107,15 +107,15 @@ export function GlobalSearch() {
     const getIcon = (type: string) => {
         switch (type) {
             case 'patient':
-                return <Users className="size-4 text-blue-500" />;
+                return <Users className="size-4 text-muted-foreground" />;
             case 'dentist':
-                return <Stethoscope className="size-4 text-green-500" />;
+                return <Stethoscope className="size-4 text-muted-foreground" />;
             case 'appointment':
-                return <Calendar className="size-4 text-purple-500" />;
+                return <Calendar className="size-4 text-muted-foreground" />;
             case 'page':
-                return <FileText className="size-4 text-orange-500" />;
+                return <FileText className="size-4 text-muted-foreground" />;
             default:
-                return <Search className="size-4" />;
+                return <Search className="size-4 text-muted-foreground" />;
         }
     };
 
@@ -199,8 +199,8 @@ export function GlobalSearch() {
                                         key={`${result.type}-${result.id}`}
                                         className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left transition-colors ${
                                             index === selectedIndex
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'hover:bg-muted'
+                                                ? 'bg-accent text-accent-foreground'
+                                                : 'hover:bg-muted/50'
                                         }`}
                                         onClick={() => {
                                             router.visit(result.url);
@@ -208,21 +208,25 @@ export function GlobalSearch() {
                                         }}
                                         onMouseEnter={() => setSelectedIndex(index)}
                                     >
-                                        {getIcon(result.type)}
+                                        <div className={`${
+                                            index === selectedIndex ? 'opacity-100' : 'opacity-70'
+                                        }`}>
+                                            {getIcon(result.type)}
+                                        </div>
                                         <div className="flex-1 overflow-hidden">
                                             <div className="truncate font-medium">{result.title}</div>
                                             <div className={`truncate text-xs ${
                                                 index === selectedIndex
-                                                    ? 'text-primary-foreground/70'
-                                                    : 'text-muted-foreground'
+                                                    ? 'text-muted-foreground'
+                                                    : 'text-muted-foreground/70'
                                             }`}>
                                                 {result.subtitle}
                                             </div>
                                         </div>
                                         <span className={`text-xs font-medium ${
                                             index === selectedIndex
-                                                ? 'text-primary-foreground/70'
-                                                : 'text-muted-foreground'
+                                                ? 'text-muted-foreground'
+                                                : 'text-muted-foreground/70'
                                         }`}>
                                             {getTypeLabel(result.type)}
                                         </span>
