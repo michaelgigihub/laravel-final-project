@@ -4,6 +4,7 @@
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\ChatController;
 use App\Http\Controllers\ClinicAvailabilityController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DentistController;
@@ -16,6 +17,14 @@ use Inertia\Inertia;
 
 // API routes for React frontend
 Route::get('/api/patients', [\App\Http\Controllers\Api\PatientController::class, 'index']);
+
+// AI Chat API endpoints
+Route::middleware(['auth', 'verified', 'password.changed'])->group(function () {
+    Route::post('/api/chat', [ChatController::class, 'sendMessage'])->name('chat.send');
+    Route::get('/api/chat/conversations', [ChatController::class, 'getConversations'])->name('chat.conversations');
+    Route::get('/api/chat/conversations/{id}/messages', [ChatController::class, 'getConversationMessages'])->name('chat.messages');
+    Route::delete('/api/chat/conversations/{id}', [ChatController::class, 'deleteConversation'])->name('chat.delete');
+});
 
 Route::get('/', function () {
     return Inertia::render('welcome');

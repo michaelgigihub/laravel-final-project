@@ -242,4 +242,61 @@ class DentistService
             ]
         );
     }
+
+    /**
+     * List all employed (active) dentists for AI chat.
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public function listEmployedDentists(): \Illuminate\Support\Collection
+    {
+        return User::query()
+            ->where('role_id', 2) // Dentist role
+            ->whereHas('dentistProfile', function ($query) {
+                $query->where('employment_status', 'Active');
+            })
+            ->with(['dentistProfile', 'specializations'])
+            ->get()
+            ->map(function ($dentist) {
+                return [
+                    'name' => $dentist->name,
+                    'email' => $dentist->email,
+                    'contact' => $dentist->contact_number,
+                    'hire_date' => $dentist->dentistProfile?->hire_date 
+                        ? \Carbon\Carbon::parse($dentist->dentistProfile->hire_date)->format('F j, Y')
+                        : 'N/A',
+                    'specializations' => $dentist->specializations->pluck('name')->join(', ') ?: 'General Dentistry'
+                ];
+            });
+    }
+
+    /**
+     * Find dentists by specialization for AI chat.
+     *
+     * @param string $specializationName
+     * @return \Illuminate\Support\Collection
+     */
+    public function findDentistsBySpecialization(string $specializationName): \Illuminate\Support\Collection
+    {
+        $searchTerm = '%' . strtolower($specializationName) . '%';
+
+        return User::query()
+            ->where('role_id', 2)
+            ->whereHas('dentistProfile', function ($query) {
+                $query->where('employment_status', 'Active');
+            })
+            ->whereHas('specializations', function ($query) use ($searchTerm) {
+                $query->whereRaw('LOWER(name) LIKE ?', [$searchTerm]);
+            })
+            ->with(['specializations'])
+            ->get()
+            ->map(function ($dentist) {
+                return [
+                    'name' => $dentist->name,
+                    'email' => $dentist->email,
+                    'contact' => $dentist->contact_number,
+                    'specializations' => $dentist->specializations->pluck('name')->join(', ')
+                ];
+            });
+    }
 }

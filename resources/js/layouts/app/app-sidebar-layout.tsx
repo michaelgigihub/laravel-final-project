@@ -6,6 +6,8 @@ import { Toaster } from '@/components/ui/sonner';
 import { type BreadcrumbItem } from '@/types';
 import { type PropsWithChildren } from 'react';
 
+import { DentalChatBot } from '@/components/dental-chat-bot';
+
 export default function AppSidebarLayout({
     children,
     breadcrumbs = [],
@@ -18,6 +20,7 @@ export default function AppSidebarLayout({
                 {children}
             </AppContent>
             <Toaster richColors />
+            <DentalChatBot />
         </AppShell>
     );
 }
