@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
 import { Label } from '@/components/ui/label';
+import { format } from 'date-fns';
 
 const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Dashboard', href: '/dashboard' },
@@ -26,8 +27,8 @@ function ReportCard({ title, description, icon, href, hasDateRange = false }: Re
     const today = new Date();
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
     
-    const [startDate, setStartDate] = useState(firstDayOfMonth.toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
+    const [startDate, setStartDate] = useState(format(firstDayOfMonth, 'yyyy-MM-dd'));
+    const [endDate, setEndDate] = useState(format(today, 'yyyy-MM-dd'));
 
     const downloadUrl = hasDateRange 
         ? `${href}?start_date=${startDate}&end_date=${endDate}`
@@ -53,16 +54,18 @@ function ReportCard({ title, description, icon, href, hasDateRange = false }: Re
                             <Label htmlFor={`${title}-start`}>Start Date</Label>
                             <DatePicker
                                 value={startDate}
-                                onChange={(date) => setStartDate(date ? date.toISOString().split('T')[0] : '')}
+                                onChange={(date) => setStartDate(date ? format(date, 'yyyy-MM-dd') : '')}
                                 placeholder="Select start date"
+                                maxDate={endDate ? new Date(endDate) : undefined}
                             />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor={`${title}-end`}>End Date</Label>
                             <DatePicker
                                 value={endDate}
-                                onChange={(date) => setEndDate(date ? date.toISOString().split('T')[0] : '')}
+                                onChange={(date) => setEndDate(date ? format(date, 'yyyy-MM-dd') : '')}
                                 placeholder="Select end date"
+                                minDate={startDate ? new Date(startDate) : undefined}
                             />
                         </div>
                     </div>

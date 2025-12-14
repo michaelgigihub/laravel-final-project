@@ -1,13 +1,11 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { CalendarPlus, Eye, Search, X } from 'lucide-react';
-import { useState } from 'react';
+import { CalendarPlus, Eye, X } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
-import { Input } from '@/components/ui/input';
 import { RegisterPatientDialog } from '@/components/RegisterPatientDialog';
 import {
     Select,
@@ -58,19 +56,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function PatientsIndex({ patients, filters }: PatientsIndexProps) {
-    const [search, setSearch] = useState(filters.search || '');
-
-    const handleSearch = () => {
-        router.get('/patients', { search, gender: filters.gender }, { preserveState: true, preserveScroll: true });
-    };
-
     const handleFilterChange = (key: 'gender', value: string) => {
         const newValue = value === 'all' ? '' : value;
         router.get('/patients', { search: filters.search, [key]: newValue }, { preserveState: true, preserveScroll: true });
     };
 
     const handleClearFilters = () => {
-        setSearch('');
         router.get('/patients', {}, { preserveState: true, preserveScroll: true });
     };
 
@@ -159,48 +150,37 @@ export default function PatientsIndex({ patients, filters }: PatientsIndexProps)
                     <RegisterPatientDialog />
                 </div>
 
-                {/* Filters - matching DentistsTable style */}
-                <div className="flex flex-wrap gap-4 items-center">
-                    <div className="flex gap-2 flex-1 min-w-[200px] max-w-md">
-                        <Input
-                            placeholder="Search by name, email, or phone..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="flex-1"
-                        />
-                        <Button onClick={handleSearch} size="icon" variant="outline">
-                            <Search className="size-4" />
-                        </Button>
-                    </div>
-
-                    <Select
-                        value={filters.gender || 'all'}
-                        onValueChange={(value) => handleFilterChange('gender', value)}
-                    >
-                        <SelectTrigger className="w-[150px]">
-                            <SelectValue placeholder="All Genders" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Genders</SelectItem>
-                            <SelectItem value="Male">Male</SelectItem>
-                            <SelectItem value="Female">Female</SelectItem>
-                            <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    {hasFilters && (
-                        <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                            <X className="size-4 mr-1" />
-                            Clear
-                        </Button>
-                    )}
-                </div>
-
                 {/* Table with Column Visibility */}
                 <div className="relative flex-1 overflow-hidden rounded-xl border border-brand-dark/20 bg-card shadow-[0_22px_48px_-30px_rgba(38,41,47,0.6)] transition-shadow dark:border-brand-light/20 dark:bg-card/60 dark:shadow-[0_18px_42px_-28px_rgba(8,9,12,0.78)]">
                     <div className="h-full overflow-auto p-4">
-                        <DataTable columns={columns} data={patients.data} />
+                        <DataTable 
+                            columns={columns} 
+                            data={patients.data} 
+                            customToolbar={
+                                <>
+                                    <Select
+                                        value={filters.gender || 'all'}
+                                        onValueChange={(value) => handleFilterChange('gender', value)}
+                                    >
+                                        <SelectTrigger className="w-[130px]">
+                                            <SelectValue placeholder="All Genders" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Genders</SelectItem>
+                                            <SelectItem value="Male">Male</SelectItem>
+                                            <SelectItem value="Female">Female</SelectItem>
+                                            <SelectItem value="Other">Other</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    {hasFilters && (
+                                        <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                                            <X className="size-4 mr-1" />
+                                            Clear
+                                        </Button>
+                                    )}
+                                </>
+                            }
+                        />
                     </div>
                 </div>
 

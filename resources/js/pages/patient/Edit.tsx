@@ -17,6 +17,7 @@ import { Head } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
+import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -165,7 +166,7 @@ export default function EditPatient({ patient, errors = {} }: EditPatientProps) 
                                             render={({ field }) => (
                                                 <DatePicker
                                                     value={field.value}
-                                                    onChange={(date) => field.onChange(date ? date.toISOString().split('T')[0] : '')}
+                                                    onChange={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
                                                     placeholder="Select date of birth"
                                                     disableFuture
                                                 />

@@ -4,7 +4,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
 import {
     Select,
     SelectContent,
@@ -12,8 +12,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import { Eye, FileText, Search, X } from 'lucide-react';
-import { useState } from 'react';
+import { Eye, X } from 'lucide-react';
 
 interface TreatmentRecordItem {
     id: number;
@@ -72,19 +71,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function Index({ records, dentists, treatmentTypes, filters }: IndexProps) {
-    const [search, setSearch] = useState(filters.search);
-
-    const handleSearch = () => {
-        router.get('/treatment-records', { ...filters, search }, { preserveState: true });
-    };
-
     const handleFilterChange = (key: keyof Filters, value: string) => {
         const newValue = value === 'all' ? '' : value;
         router.get('/treatment-records', { ...filters, [key]: newValue }, { preserveState: true });
     };
 
     const handleClearFilters = () => {
-        setSearch('');
         router.get('/treatment-records', {}, { preserveState: true });
     };
 
@@ -150,100 +142,72 @@ export default function Index({ records, dentists, treatmentTypes, filters }: In
                     </div>
                 </div>
 
-                {/* Filters - matching DentistsTable style */}
-                <div className="flex flex-wrap gap-3 items-center">
-                    {/* Search */}
-                    <div className="flex gap-2 flex-1 min-w-[200px] max-w-md">
-                        <Input
-                            placeholder="Search patient name..."
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                            className="flex-1"
-                        />
-                        <Button onClick={handleSearch} size="icon" variant="outline">
-                            <Search className="size-4" />
-                        </Button>
-                    </div>
-
-                    {/* Date Range */}
-                    <div className="flex gap-2 items-center">
-                        <DatePicker
-                            value={filters.date_from}
-                            onChange={(date) => handleFilterChange('date_from', date ? date.toISOString().split('T')[0] : '')}
-                            placeholder="From date"
-                            className="w-[180px]"
-                        />
-                        <span className="text-muted-foreground text-sm">to</span>
-                        <DatePicker
-                            value={filters.date_to}
-                            onChange={(date) => handleFilterChange('date_to', date ? date.toISOString().split('T')[0] : '')}
-                            placeholder="To date"
-                            className="w-[180px]"
-                        />
-                    </div>
-
-                    {/* Dentist Filter */}
-                    <Select
-                        value={filters.dentist_id || 'all'}
-                        onValueChange={(value) => handleFilterChange('dentist_id', value)}
-                    >
-                        <SelectTrigger className="w-[160px]">
-                            <SelectValue placeholder="All Dentists" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Dentists</SelectItem>
-                            {dentists.map((d) => (
-                                <SelectItem key={d.id} value={d.id.toString()}>
-                                    {d.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    {/* Treatment Type Filter */}
-                    <Select
-                        value={filters.treatment_type_id || 'all'}
-                        onValueChange={(value) => handleFilterChange('treatment_type_id', value)}
-                    >
-                        <SelectTrigger className="w-[160px]">
-                            <SelectValue placeholder="All Treatments" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Treatments</SelectItem>
-                            {treatmentTypes.map((t) => (
-                                <SelectItem key={t.id} value={t.id.toString()}>
-                                    {t.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-
-                    {/* Clear Filters */}
-                    {hasFilters && (
-                        <Button variant="ghost" size="sm" onClick={handleClearFilters}>
-                            <X className="size-4 mr-1" />
-                            Clear
-                        </Button>
-                    )}
-                </div>
-
                 {/* Table with Column Visibility */}
                 <div className="relative flex-1 overflow-hidden rounded-xl border border-brand-dark/20 bg-card shadow-[0_22px_48px_-30px_rgba(38,41,47,0.6)] transition-shadow dark:border-brand-light/20 dark:bg-card/60 dark:shadow-[0_18px_42px_-28px_rgba(8,9,12,0.78)]">
                     <div className="h-full overflow-auto p-4">
-                        {records.data.length > 0 ? (
-                            <DataTable columns={columns} data={records.data} />
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-16 text-center">
-                                <FileText className="size-16 text-muted-foreground/50 mb-4" />
-                                <h3 className="text-lg font-medium mb-1">No Treatment Records Found</h3>
-                                <p className="text-muted-foreground">
-                                    {hasFilters
-                                        ? 'Try adjusting your filters to find what you\'re looking for.'
-                                        : 'Treatment records will appear here after appointments are completed.'}
-                                </p>
-                            </div>
-                        )}
+                        <DataTable 
+                            columns={columns} 
+                            data={records.data}
+                            customToolbar={
+                                <>
+                                    <div className="flex gap-2 items-center">
+                                        <DatePicker
+                                            value={filters.date_from}
+                                            onChange={(date) => handleFilterChange('date_from', date ? format(date, 'yyyy-MM-dd') : '')}
+                                            placeholder="From date"
+                                            className="w-[180px]"
+                                            maxDate={filters.date_to ? new Date(filters.date_to) : undefined}
+                                        />
+                                        <span className="text-muted-foreground text-sm">to</span>
+                                        <DatePicker
+                                            value={filters.date_to}
+                                            onChange={(date) => handleFilterChange('date_to', date ? format(date, 'yyyy-MM-dd') : '')}
+                                            placeholder="To date"
+                                            className="w-[180px]"
+                                            minDate={filters.date_from ? new Date(filters.date_from) : undefined}
+                                        />
+                                    </div>
+                                    <Select
+                                        value={filters.dentist_id || 'all'}
+                                        onValueChange={(value) => handleFilterChange('dentist_id', value)}
+                                    >
+                                        <SelectTrigger className="w-[150px]">
+                                            <SelectValue placeholder="All Dentists" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Dentists</SelectItem>
+                                            {dentists.map((d) => (
+                                                <SelectItem key={d.id} value={d.id.toString()}>
+                                                    {d.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <Select
+                                        value={filters.treatment_type_id || 'all'}
+                                        onValueChange={(value) => handleFilterChange('treatment_type_id', value)}
+                                    >
+                                        <SelectTrigger className="w-[200px]">
+                                            <SelectValue placeholder="All Treatments" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="all">All Treatments</SelectItem>
+                                            {treatmentTypes.map((t) => (
+                                                <SelectItem key={t.id} value={t.id.toString()}>
+                                                    {t.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    {hasFilters && (
+                                        <Button variant="ghost" size="sm" onClick={handleClearFilters}>
+                                            <X className="size-4 mr-1" />
+                                            Clear
+                                        </Button>
+                                    )}
+                                </>
+                            }
+                        />
                     </div>
                 </div>
 

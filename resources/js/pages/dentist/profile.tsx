@@ -40,6 +40,7 @@ import admin from '@/routes/admin';
 import { dashboard } from '@/routes';
 import type { BreadcrumbItem } from '@/types';
 import { toast } from 'sonner';
+import { format } from 'date-fns';
 import { ImageCropDialog } from '@/components/ImageCropDialog';
 
 // Define strict types for props since we are adding new ones
@@ -96,11 +97,8 @@ function DatePickerWithInput({ value: initialValue, onChange, className, error }
         if (isValidDate(newDate)) {
             setDate(newDate);
             setMonth(newDate);
-            // Convert to YYYY-MM-DD for parent
-            // Adjust for timezone offset to avoid off-by-one error when converting to string
-            const offset = newDate.getTimezoneOffset();
-            const adjustedDate = new Date(newDate.getTime() - (offset*60*1000));
-            onChange(adjustedDate.toISOString().split('T')[0]);
+            // Use date-fns format to preserve local timezone
+            onChange(format(newDate, 'yyyy-MM-dd'));
         }
     };
 
@@ -109,10 +107,8 @@ function DatePickerWithInput({ value: initialValue, onChange, className, error }
         setInputValue(formatDateForInput(newDate));
         setOpen(false);
         if (newDate) {
-             // Adjust for timezone offset
-             const offset = newDate.getTimezoneOffset();
-             const adjustedDate = new Date(newDate.getTime() - (offset*60*1000));
-             onChange(adjustedDate.toISOString().split('T')[0]);
+             // Use date-fns format to preserve local timezone
+             onChange(format(newDate, 'yyyy-MM-dd'));
         } else {
              onChange('');
         }
@@ -170,6 +166,7 @@ export default function DentistProfile({
     specializations = [], // Default to empty if not passed
 }: ExtendedDentistProfileProps) {
     const [isEditing, setIsEditing] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [avatarFile, setAvatarFile] = useState<File | null>(null);
     const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -202,7 +199,7 @@ export default function DentistProfile({
         return items;
     }, [viewMode]);
 
-    const { data, setData, processing, errors, reset } = useForm({
+    const { data, setData, errors, reset } = useForm({
         fname: dentist.fname,
         mname: dentist.mname || '',
         lname: dentist.lname,
@@ -210,7 +207,7 @@ export default function DentistProfile({
         email: dentist.email,
         contact_number: dentist.contact_number || '',
         employment_status: dentist.employment_status || 'Active',
-        hire_date: dentist.hire_date ? new Date(dentist.hire_date).toISOString().split('T')[0] : '',
+        hire_date: dentist.hire_date ? format(new Date(dentist.hire_date), 'yyyy-MM-dd') : '',
         specialization_ids: dentist.specializations.map((s) => s.id),
     });
 
@@ -231,6 +228,7 @@ export default function DentistProfile({
 
     const handleSave = (e: React.FormEvent) => {
         e.preventDefault();
+        setIsSubmitting(true);
         
         // Use different endpoint based on viewMode
         const endpoint = viewMode === 'admin' 
@@ -262,6 +260,7 @@ export default function DentistProfile({
         router.post(endpoint, formData, {
             preserveScroll: true,
             onSuccess: () => {
+                setIsSubmitting(false);
                 setIsEditing(false);
                 setAvatarFile(null);
                 setAvatarPreview(null);
@@ -270,6 +269,7 @@ export default function DentistProfile({
                 });
             },
             onError: () => {
+                setIsSubmitting(false);
                 toast.error('Failed to update profile', {
                     description: 'Please check the form for errors and try again.',
                 });
@@ -344,17 +344,51 @@ export default function DentistProfile({
                         <h1 className="text-2xl font-bold tracking-tight">{pageTitle}</h1>
                         <p className="text-sm text-muted-foreground">{pageDescription}</p>
                     </div>
-                     {(viewMode === 'admin' || viewMode === 'self') && !isEditing && (
-                        <Button onClick={() => setIsEditing(true)}>
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit Profile
-                        </Button>
+                    {(viewMode === 'admin' || viewMode === 'self') && (
+                        <div className="flex gap-2">
+                            {isEditing ? (
+                                <>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        onClick={handleCancel}
+                                        disabled={isSubmitting}
+                                    >
+                                        <XCircle className="mr-2 h-4 w-4" />
+                                        Cancel
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        form="profile-form"
+                                        disabled={isSubmitting}
+                                        className="min-w-[120px]"
+                                    >
+                                        {isSubmitting ? (
+                                            <>
+                                                <Spinner className="mr-2 h-4 w-4" />
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save className="mr-2 h-4 w-4" />
+                                                Save Changes
+                                            </>
+                                        )}
+                                    </Button>
+                                </>
+                            ) : (
+                                <Button onClick={() => setIsEditing(true)}>
+                                    <Pencil className="mr-2 h-4 w-4" />
+                                    Edit Profile
+                                </Button>
+                            )}
+                        </div>
                     )}
                 </div>
 
                 <div className="relative flex-1 overflow-hidden rounded-xl border border-brand-dark/20 bg-card shadow-[0_22px_48px_-30px_rgba(38,41,47,0.6)] transition-shadow dark:border-brand-light/20 dark:bg-card/60 dark:shadow-[0_18px_42px_-28px_rgba(8,9,12,0.78)]">
                     <div className="h-full overflow-y-auto p-6">
-                        <form onSubmit={handleSave}>
+                        <form id="profile-form" onSubmit={handleSave}>
                     <div className="grid gap-6 md:grid-cols-3">
                         {/* Profile Summary Card */}
                         <Card className="md:col-span-1 h-full">
@@ -739,39 +773,7 @@ export default function DentistProfile({
                             </Card>
                         )}
                         
-                        {isEditing && (
-                            <div className="md:col-span-3 flex justify-end gap-2 fixed bottom-6 right-6 z-50">
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="lg"
-                                    onClick={handleCancel}
-                                    disabled={processing}
-                                    className="shadow-lg bg-background"
-                                >
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                    Cancel
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    size="lg"
-                                    disabled={processing}
-                                    className="shadow-lg min-w-[140px]"
-                                >
-                                    {processing ? (
-                                        <>
-                                            <Spinner className="mr-2 h-4 w-4" />
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save className="mr-2 h-4 w-4" />
-                                            Save Changes
-                                        </>
-                                    )}
-                                </Button>
-                            </div>
-                        )}
+
                     </div>
                         </form>
                     </div>

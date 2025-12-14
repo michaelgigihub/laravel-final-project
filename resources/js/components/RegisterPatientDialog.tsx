@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { UserPlus, ChevronLeft, ChevronRight, Check, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface RegisterPatientDialogProps {
@@ -334,7 +335,7 @@ export function RegisterPatientDialog({
                                                     toYear={new Date().getFullYear()}
                                                     onSelect={(date) => {
                                                         if (date) {
-                                                            setValue('date_of_birth', date.toISOString().split('T')[0], { shouldValidate: true });
+                                                            setValue('date_of_birth', format(date, 'yyyy-MM-dd'), { shouldValidate: true });
                                                         } else {
                                                             setValue('date_of_birth', '', { shouldValidate: true });
                                                         }

@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { CalendarCheck, ChevronLeft, ChevronRight, Check, CalendarIcon, Clock } from 'lucide-react';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface Person {
@@ -197,7 +198,7 @@ export function CreateAppointmentDialog({
             else setOpen(true);
         }}>
             <DialogTrigger asChild>
-                {trigger || defaultTrigget}
+                {trigger || defaultTrigger}
             </DialogTrigger>
             <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
@@ -322,7 +323,7 @@ export function CreateAppointmentDialog({
                                                     disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                                                     onSelect={(date) => {
                                                         if (date) {
-                                                            setAppointmentDate(date.toISOString().split('T')[0]);
+                                                            setAppointmentDate(format(date, 'yyyy-MM-dd'));
                                                         }
                                                         setDateOpen(false);
                                                     }}

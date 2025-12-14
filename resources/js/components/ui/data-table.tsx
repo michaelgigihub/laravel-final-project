@@ -39,9 +39,10 @@ interface DataTableProps<TData> {
   columns: ColumnDef<TData>[];
   data: TData[];
   filterKey?: string;
+  customToolbar?: React.ReactNode;
 }
 
-export function DataTable<TData>({ columns, data, filterKey = "email" }: DataTableProps<TData>) {
+export function DataTable<TData>({ columns, data, filterKey = "email", customToolbar }: DataTableProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = React.useState("");
@@ -85,7 +86,7 @@ export function DataTable<TData>({ columns, data, filterKey = "email" }: DataTab
 
   return (
     <div className="w-full">
-      <div className="flex items-center py-4">
+      <div className="flex flex-wrap items-center gap-2 py-4">
         <div className="relative max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
@@ -95,6 +96,11 @@ export function DataTable<TData>({ columns, data, filterKey = "email" }: DataTab
             className="pl-8"
           />
         </div>
+        {customToolbar && (
+          <div className="flex flex-wrap items-center gap-2">
+            {customToolbar}
+          </div>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="ml-auto">

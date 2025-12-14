@@ -45,6 +45,7 @@ import {
 } from '@/components/ui/field';
 import { Spinner } from '@/components/ui/spinner';
 import { UserPlus, ChevronLeft, ChevronRight, Check, CalendarIcon } from 'lucide-react';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface Specialization {
@@ -456,7 +457,7 @@ export function RegisterDentistDialog({
                                                     onMonthChange={setHireDateMonth}
                                                     onSelect={(date) => {
                                                         if (date) {
-                                                            setValue('hire_date', date.toISOString().split('T')[0], { shouldValidate: true });
+                                                            setValue('hire_date', format(date, 'yyyy-MM-dd'), { shouldValidate: true });
                                                         } else {
                                                             setValue('hire_date', '', { shouldValidate: true });
                                                         }

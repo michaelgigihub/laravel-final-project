@@ -1,16 +1,22 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, router, useForm } from '@inertiajs/react';
-import { Calendar, Clock, Plus, Trash2, X } from 'lucide-react';
+import { Calendar, Clock, MoreHorizontal, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
+import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Spinner } from '@/components/ui/spinner';
 import { Switch } from '@/components/ui/switch';
+import { TimePicker } from '@/components/ui/time-picker';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 import {
     Dialog,
     DialogContent,
@@ -21,6 +27,16 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
     Table,
     TableBody,
     TableCell,
@@ -28,6 +44,13 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface Availability {
     id: number;
@@ -68,6 +91,7 @@ const DAYS_OF_WEEK = [
 export default function ClinicAvailability({ availabilities, closures }: ClinicAvailabilityProps) {
     const [editingDay, setEditingDay] = useState<number | null>(null);
     const [showClosureDialog, setShowClosureDialog] = useState(false);
+    const [deletingAvailability, setDeletingAvailability] = useState<{ id: number; dayName: string } | null>(null);
 
     // Form for editing availability
     const availabilityForm = useForm({
@@ -111,14 +135,35 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
     const handleSaveAvailability = () => {
         availabilityForm.post('/admin/clinic-availability', {
             preserveScroll: true,
-            onSuccess: () => setEditingDay(null),
+            onSuccess: () => {
+                setEditingDay(null);
+                toast.success('Schedule saved successfully!', {
+                    description: 'The clinic hours have been updated.',
+                });
+            },
+            onError: () => {
+                toast.error('Failed to save schedule', {
+                    description: 'Please check the times and try again.',
+                });
+            },
         });
     };
 
-    const handleDeleteAvailability = (id: number) => {
-        if (confirm('Are you sure you want to remove this availability?')) {
-            router.delete(`/admin/clinic-availability/${id}`, {
+    const handleDeleteAvailability = () => {
+        if (deletingAvailability) {
+            router.delete(`/admin/clinic-availability/${deletingAvailability.id}`, {
                 preserveScroll: true,
+                onSuccess: () => {
+                    setDeletingAvailability(null);
+                    toast.success('Schedule removed', {
+                        description: 'The clinic hours have been reset.',
+                    });
+                },
+                onError: () => {
+                    toast.error('Failed to remove schedule', {
+                        description: 'Please try again.',
+                    });
+                },
             });
         }
     };
@@ -216,15 +261,39 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Input
-                                                        type="time"
-                                                        value={availabilityForm.data.open_time}
-                                                        onChange={(e) =>
-                                                            availabilityForm.setData('open_time', e.target.value)
-                                                        }
-                                                        disabled={availabilityForm.data.is_closed}
-                                                        className="w-32"
-                                                    />
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                disabled={availabilityForm.data.is_closed}
+                                                                className={cn(
+                                                                    'w-[130px] justify-between text-left font-normal',
+                                                                    !availabilityForm.data.open_time && 'text-muted-foreground'
+                                                                )}
+                                                            >
+                                                                <span>
+                                                                    {availabilityForm.data.open_time ? (() => {
+                                                                        const [h, m] = availabilityForm.data.open_time.split(':');
+                                                                        const hour = parseInt(h);
+                                                                        const period = hour >= 12 ? 'PM' : 'AM';
+                                                                        const hour12 = hour % 12 || 12;
+                                                                        return `${hour12.toString().padStart(2, '0')}:${m} ${period}`;
+                                                                    })() : 'Select time'}
+                                                                </span>
+                                                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0" align="start">
+                                                            <div className="p-3 border-b border-border">
+                                                                <h4 className="font-medium text-sm text-center mb-2">Open Time</h4>
+                                                                <TimePicker
+                                                                    value={availabilityForm.data.open_time}
+                                                                    onChange={(time) => availabilityForm.setData('open_time', time)}
+                                                                    disabled={availabilityForm.data.is_closed}
+                                                                />
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
                                                     {availabilityForm.errors.open_time && (
                                                         <p className="text-xs text-destructive mt-1">
                                                             {availabilityForm.errors.open_time}
@@ -232,15 +301,39 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                                                     )}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Input
-                                                        type="time"
-                                                        value={availabilityForm.data.close_time}
-                                                        onChange={(e) =>
-                                                            availabilityForm.setData('close_time', e.target.value)
-                                                        }
-                                                        disabled={availabilityForm.data.is_closed}
-                                                        className="w-32"
-                                                    />
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                disabled={availabilityForm.data.is_closed}
+                                                                className={cn(
+                                                                    'w-[130px] justify-between text-left font-normal',
+                                                                    !availabilityForm.data.close_time && 'text-muted-foreground'
+                                                                )}
+                                                            >
+                                                                <span>
+                                                                    {availabilityForm.data.close_time ? (() => {
+                                                                        const [h, m] = availabilityForm.data.close_time.split(':');
+                                                                        const hour = parseInt(h);
+                                                                        const period = hour >= 12 ? 'PM' : 'AM';
+                                                                        const hour12 = hour % 12 || 12;
+                                                                        return `${hour12.toString().padStart(2, '0')}:${m} ${period}`;
+                                                                    })() : 'Select time'}
+                                                                </span>
+                                                                <Clock className="h-4 w-4 text-muted-foreground" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-auto p-0" align="start">
+                                                            <div className="p-3 border-b border-border">
+                                                                <h4 className="font-medium text-sm text-center mb-2">Close Time</h4>
+                                                                <TimePicker
+                                                                    value={availabilityForm.data.close_time}
+                                                                    onChange={(time) => availabilityForm.setData('close_time', time)}
+                                                                    disabled={availabilityForm.data.is_closed}
+                                                                />
+                                                            </div>
+                                                        </PopoverContent>
+                                                    </Popover>
                                                     {availabilityForm.errors.close_time && (
                                                         <p className="text-xs text-destructive mt-1">
                                                             {availabilityForm.errors.close_time}
@@ -254,7 +347,14 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                                                             onClick={handleSaveAvailability}
                                                             disabled={availabilityForm.processing}
                                                         >
-                                                            Save
+                                                            {availabilityForm.processing ? (
+                                                                <>
+                                                                    <Spinner className="mr-2 size-4" />
+                                                                    Saving...
+                                                                </>
+                                                            ) : (
+                                                                'Save'
+                                                            )}
                                                         </Button>
                                                         <Button
                                                             size="sm"
@@ -294,22 +394,39 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                                                     : '-'}
                                             </TableCell>
                                             <TableCell>
-                                                <div className="flex justify-center gap-2">
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleEditDay(day.value)}
-                                                    >
-                                                        {availability ? 'Edit' : 'Set'}
-                                                    </Button>
-                                                    {availability && (
+                                                <div className="flex justify-center">
+                                                    {availability ? (
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                    <span className="sr-only">Open menu</span>
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => handleEditDay(day.value)}
+                                                                >
+                                                                    <Pencil className="mr-2 h-4 w-4" />
+                                                                    Edit
+                                                                </DropdownMenuItem>
+                                                                <DropdownMenuItem
+                                                                    onClick={() => setDeletingAvailability({ id: availability.id, dayName: day.label })}
+                                                                    className="text-destructive focus:text-destructive"
+                                                                >
+                                                                    <Trash2 className="mr-2 h-4 w-4" />
+                                                                    Delete
+                                                                </DropdownMenuItem>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    ) : (
                                                         <Button
                                                             size="sm"
-                                                            variant="ghost"
-                                                            className="text-destructive hover:text-destructive"
-                                                            onClick={() => handleDeleteAvailability(availability.id)}
+                                                            variant="outline"
+                                                            onClick={() => handleEditDay(day.value)}
                                                         >
-                                                            <Trash2 className="size-4" />
+                                                            Set
                                                         </Button>
                                                     )}
                                                 </div>
@@ -354,7 +471,7 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                                             <Label htmlFor="date">Date</Label>
                                             <DatePicker
                                                 value={closureForm.data.date}
-                                                onChange={(date) => closureForm.setData('date', date ? date.toISOString().split('T')[0] : '')}
+                                                onChange={(date) => closureForm.setData('date', date ? format(date, 'yyyy-MM-dd') : '')}
                                                 placeholder="Select closure date"
                                                 disablePast
                                             />
@@ -441,6 +558,29 @@ export default function ClinicAvailability({ availabilities, closures }: ClinicA
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Delete Availability Confirmation Dialog */}
+            <AlertDialog open={!!deletingAvailability} onOpenChange={(open: boolean) => !open && setDeletingAvailability(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Schedule</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to remove the schedule for{' '}
+                            <span className="font-semibold">{deletingAvailability?.dayName}</span>?
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={handleDeleteAvailability}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </AppLayout>
     );
 }

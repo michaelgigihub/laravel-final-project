@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatePicker } from '@/components/ui/date-picker';
+import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -174,16 +175,48 @@ export default function ShowPatient({ patient }: ShowPatientProps) {
                         <h1 className="text-2xl font-bold tracking-tight">{getFullName(patient)}</h1>
                         <p className="text-sm text-muted-foreground">Patient ID: {patient.id}</p>
                     </div>
-                    {!isEditing && (
-                        <Button onClick={() => setIsEditing(true)}>
-                            <Pencil className="mr-2 size-4" />
-                            Edit Patient
-                        </Button>
-                    )}
+                    <div className="flex gap-2">
+                        {isEditing ? (
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleCancel}
+                                    disabled={processing}
+                                >
+                                    <XCircle className="mr-2 size-4" />
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    form="patient-form"
+                                    disabled={processing}
+                                    className="min-w-[120px]"
+                                >
+                                    {processing ? (
+                                        <>
+                                            <Spinner className="mr-2 size-4" />
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save className="mr-2 size-4" />
+                                            Save Changes
+                                        </>
+                                    )}
+                                </Button>
+                            </>
+                        ) : (
+                            <Button onClick={() => setIsEditing(true)}>
+                                <Pencil className="mr-2 size-4" />
+                                Edit Patient
+                            </Button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Patient Information Card */}
-                <form onSubmit={handleSave}>
+                <form id="patient-form" onSubmit={handleSave}>
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -279,7 +312,7 @@ export default function ShowPatient({ patient }: ShowPatientProps) {
                                         <>
                                             <DatePicker
                                                 value={data.date_of_birth}
-                                                onChange={(date) => setData('date_of_birth', date ? date.toISOString().split('T')[0] : '')}
+                                                onChange={(date) => setData('date_of_birth', date ? format(date, 'yyyy-MM-dd') : '')}
                                                 placeholder="Select date of birth"
                                                 disableFuture
                                             />
@@ -354,40 +387,6 @@ export default function ShowPatient({ patient }: ShowPatientProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Floating Save/Cancel Buttons */}
-                    {isEditing && (
-                        <div className="fixed bottom-6 right-6 z-50 flex gap-2">
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="lg"
-                                onClick={handleCancel}
-                                disabled={processing}
-                                className="shadow-lg bg-background"
-                            >
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Cancel
-                            </Button>
-                            <Button
-                                type="submit"
-                                size="lg"
-                                disabled={processing}
-                                className="shadow-lg min-w-[140px]"
-                            >
-                                {processing ? (
-                                    <>
-                                        <Spinner className="mr-2 h-4 w-4" />
-                                        Saving...
-                                    </>
-                                ) : (
-                                    <>
-                                        <Save className="mr-2 h-4 w-4" />
-                                        Save Changes
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    )}
                 </form>
 
                 {/* Medical History / Appointments */}

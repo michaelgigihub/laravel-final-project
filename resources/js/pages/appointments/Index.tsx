@@ -1,7 +1,7 @@
 import AppLayout from '@/layouts/app-layout';
 import { type BreadcrumbItem } from '@/types';
 import { Head, Link, router } from '@inertiajs/react';
-import { Calendar, Eye, LayoutGrid, List, Plus, Search, X } from 'lucide-react';
+import { Eye, LayoutGrid, List, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 
 import { AppointmentsCalendar } from '@/components/AppointmentsCalendar';
@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import { DatePicker } from '@/components/ui/date-picker';
-import { Input } from '@/components/ui/input';
+import { format } from 'date-fns';
 import {
     Select,
     SelectContent,
@@ -59,18 +59,13 @@ const breadcrumbs: BreadcrumbItem[] = [
 ];
 
 export default function AppointmentsIndex({ appointments, filters }: AppointmentsIndexProps) {
-    const [search, setSearch] = useState(filters.search || '');
     const [localFilters, setLocalFilters] = useState(filters);
     const [viewMode, setViewMode] = useState<'table' | 'calendar'>('table');
-
-    const handleSearch = () => {
-        router.get('/appointments', { ...localFilters, search }, { preserveState: true, preserveScroll: true });
-    };
 
     const handleFilterChange = (key: string, value: string) => {
         const newFilters = { ...localFilters, [key]: value === 'all' ? '' : value };
         setLocalFilters(newFilters);
-        router.get('/appointments', { ...newFilters, search }, { preserveState: true, preserveScroll: true });
+        router.get('/appointments', newFilters, { preserveState: true, preserveScroll: true });
     };
 
     const clearFilters = () => {
@@ -83,7 +78,6 @@ export default function AppointmentsIndex({ appointments, filters }: Appointment
             search: '',
         };
         setLocalFilters(emptyFilters);
-        setSearch('');
         router.get('/appointments', {}, { preserveState: true, preserveScroll: true });
     };
 
@@ -212,83 +206,55 @@ export default function AppointmentsIndex({ appointments, filters }: Appointment
                     </div>
                 </div>
 
-                {/* Filters - inline style like DentistsTable */}
-                {viewMode === 'table' && (
-                    <div className="flex flex-wrap gap-4 items-center">
-                        {/* Search */}
-                        <div className="flex gap-2 flex-1 min-w-[200px] max-w-md">
-                            <Input
-                                placeholder="Search patient or dentist..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                                className="flex-1"
-                            />
-                            <Button onClick={handleSearch} size="icon" variant="outline">
-                                <Search className="size-4" />
-                            </Button>
-                        </div>
-
-                        {/* Status Filter */}
-                        <Select
-                            value={localFilters.status || 'all'}
-                            onValueChange={(v) => handleFilterChange('status', v)}
-                        >
-                            <SelectTrigger className="w-[140px]">
-                                <SelectValue placeholder="All Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="Scheduled">Scheduled</SelectItem>
-                                <SelectItem value="Completed">Completed</SelectItem>
-                                <SelectItem value="Cancelled">Cancelled</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        {/* Date Range */}
-                        <div className="flex gap-2 items-center">
-                            <DatePicker
-                                value={localFilters.start_date}
-                                onChange={(date) => handleFilterChange('start_date', date ? date.toISOString().split('T')[0] : '')}
-                                placeholder="Start date"
-                                className="w-[160px]"
-                            />
-                            <span className="text-muted-foreground text-sm">to</span>
-                            <DatePicker
-                                value={localFilters.end_date}
-                                onChange={(date) => handleFilterChange('end_date', date ? date.toISOString().split('T')[0] : '')}
-                                placeholder="End date"
-                                className="w-[160px]"
-                            />
-                        </div>
-
-                        {/* Clear Filters */}
-                        {hasActiveFilters && (
-                            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
-                                <X className="size-4 mr-1" />
-                                Clear
-                            </Button>
-                        )}
-                    </div>
-                )}
-
                 {/* Content */}
                 {viewMode === 'table' ? (
                     <div className="relative flex-1 overflow-hidden rounded-xl border border-brand-dark/20 bg-card shadow-[0_22px_48px_-30px_rgba(38,41,47,0.6)] transition-shadow dark:border-brand-light/20 dark:bg-card/60 dark:shadow-[0_18px_42px_-28px_rgba(8,9,12,0.78)]">
                         <div className="h-full overflow-auto p-4">
-                            {appointments.length > 0 ? (
-                                <DataTable columns={columns} data={appointments} />
-                            ) : (
-                                <div className="flex flex-col items-center justify-center py-16 text-center">
-                                    <Calendar className="size-16 text-muted-foreground/50 mb-4" />
-                                    <h3 className="text-lg font-medium mb-1">No Appointments Found</h3>
-                                    <p className="text-muted-foreground">
-                                        {hasActiveFilters
-                                            ? "Try adjusting your filters to find what you're looking for."
-                                            : 'Appointments will appear here once scheduled.'}
-                                    </p>
-                                </div>
-                            )}
+                            <DataTable 
+                                columns={columns} 
+                                data={appointments} 
+                                customToolbar={
+                                    <>
+                                        <Select
+                                            value={localFilters.status || 'all'}
+                                            onValueChange={(v) => handleFilterChange('status', v)}
+                                        >
+                                            <SelectTrigger className="w-[120px]">
+                                                <SelectValue placeholder="All Status" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="all">All Status</SelectItem>
+                                                <SelectItem value="Scheduled">Scheduled</SelectItem>
+                                                <SelectItem value="Completed">Completed</SelectItem>
+                                                <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <div className="flex gap-2 items-center">
+                                            <DatePicker
+                                                value={localFilters.start_date}
+                                                onChange={(date) => handleFilterChange('start_date', date ? format(date, 'yyyy-MM-dd') : '')}
+                                                placeholder="Start date"
+                                                className="w-[180px]"
+                                                maxDate={localFilters.end_date ? new Date(localFilters.end_date) : undefined}
+                                            />
+                                            <span className="text-muted-foreground text-sm">to</span>
+                                            <DatePicker
+                                                value={localFilters.end_date}
+                                                onChange={(date) => handleFilterChange('end_date', date ? format(date, 'yyyy-MM-dd') : '')}
+                                                placeholder="End date"
+                                                className="w-[180px]"
+                                                minDate={localFilters.start_date ? new Date(localFilters.start_date) : undefined}
+                                            />
+                                        </div>
+                                        {hasActiveFilters && (
+                                            <Button variant="ghost" size="sm" onClick={clearFilters} className="text-muted-foreground">
+                                                <X className="size-4 mr-1" />
+                                                Clear
+                                            </Button>
+                                        )}
+                                    </>
+                                }
+                            />
                         </div>
                     </div>
                 ) : (

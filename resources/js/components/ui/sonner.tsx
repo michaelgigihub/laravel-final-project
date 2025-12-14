@@ -1,6 +1,6 @@
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 
-function Toaster({ position = "bottom-right", ...props }: ToasterProps) {
+function Toaster({ position = "top-center", ...props }: ToasterProps) {
   return (
     <Sonner
       position={position}
