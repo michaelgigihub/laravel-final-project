@@ -27,6 +27,18 @@ class GeminiChatService
      */
     private const BASE_SYSTEM_INSTRUCTION = 'You are a helpful dental clinic assistant. You can help patients and staff find information about appointments, treatments, and clinic hours. When asked about appointments, use the provided tools to look up accurate information. Be friendly, professional, and concise in your responses. Always assume the current year is 2025.';
 
+    /**
+     * Maximum number of messages to include in chat history context.
+     * 20 messages = ~10 user/assistant exchanges - balances context vs cost.
+     */
+    private const MAX_HISTORY_MESSAGES = 20;
+
+    /**
+     * Maximum number of function calls allowed per request.
+     * Prevents infinite loops if AI repeatedly calls functions.
+     */
+    private const MAX_FUNCTION_CALLS = 5;
+
     public function __construct(
         private readonly AppointmentService $appointmentService,
         private readonly TreatmentService $treatmentService,
@@ -65,23 +77,51 @@ class GeminiChatService
     public function handleChat(string $message, ?int $conversationId = null, $user = null): array
     {
         try {
+            $isNewConversation = false;
+            
             // Get or create conversation
             if ($user) {
-                $conversation = $this->chatHistoryService->getOrCreateConversation($user->id, $conversationId);
+                if ($conversationId) {
+                    $conversation = $this->chatHistoryService->getOrCreateConversation($user->id, $conversationId);
+                } else {
+                    $conversation = $this->chatHistoryService->getOrCreateConversation($user->id, null);
+                    $isNewConversation = true;
+                }
                 $conversationId = $conversation->id;
                 
-                // Store user message
-                $this->chatHistoryService->addMessage($conversationId, 'user', $message);
+                // Store user message and capture its ID for potential cancellation
+                $userMessageRecord = $this->chatHistoryService->addMessage($conversationId, 'user', $message);
+                $userMessageId = $userMessageRecord->id;
+            } else {
+                $userMessageId = null;
             }
 
-             // Define the function declarations
+            // Define the function declarations
             $tools = $this->getToolDefinitions();
 
-            // Build the chat with tools and dynamic system instruction
+            // Build conversation history for context (excluding current message which we just added)
+            // Limit history to last N messages to control costs and maintain response quality
+            $history = [];
+            if ($conversationId && !$isNewConversation) {
+                $previousMessages = $this->chatHistoryService->getConversationMessages($conversationId);
+                // Exclude the last message (which is the current user message we just added)
+                $previousMessages = $previousMessages->slice(0, -1);
+                
+                // Limit to last MAX_HISTORY_MESSAGES to control token costs and quality
+                // Take the most recent messages (user + assistant pairs = ~10 exchanges)
+                $previousMessages = $previousMessages->slice(-self::MAX_HISTORY_MESSAGES);
+                
+                foreach ($previousMessages as $msg) {
+                    $role = $msg->role === 'user' ? Role::USER : Role::MODEL;
+                    $history[] = Content::parse(part: $msg->content, role: $role);
+                }
+            }
+
+            // Build the chat with tools, dynamic system instruction, and history
             $chat = Gemini::generativeModel(model: self::MODEL)
                 ->withSystemInstruction(Content::parse($this->buildSystemInstruction($user)))
                 ->withTool($tools)
-                ->startChat();
+                ->startChat(history: $history);
 
             // Send the user message
             $response = $chat->sendMessage($message);
@@ -97,9 +137,22 @@ class GeminiChatService
                 ];
             }
 
-            // Process function calls if present
+            // Process function calls if present (with guard against infinite loops)
+            $functionCallCount = 0;
             foreach ($parts as $part) {
                 if ($part->functionCall !== null) {
+                    $functionCallCount++;
+                    
+                    // Guard against too many function calls
+                    if ($functionCallCount > self::MAX_FUNCTION_CALLS) {
+                        Log::warning('Max function calls exceeded', ['count' => $functionCallCount]);
+                        return [
+                            'success' => false,
+                            'response' => null,
+                            'error' => 'Request too complex. Please try a simpler question.',
+                        ];
+                    }
+                    
                     $functionCall = $part->functionCall;
 
                     // Execute the function with RBAC
@@ -133,6 +186,7 @@ class GeminiChatService
                         'response' => $responseText,
                         'function_called' => $functionCall->name,
                         'conversation_id' => $conversationId,
+                        'user_message_id' => $userMessageId,
                     ];
                 }
             }
@@ -149,6 +203,7 @@ class GeminiChatService
                 'success' => true,
                 'response' => $responseText,
                 'conversation_id' => $conversationId,
+                'user_message_id' => $userMessageId,
             ];
 
         } catch (\Exception $e) {

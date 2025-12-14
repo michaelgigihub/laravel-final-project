@@ -6,6 +6,7 @@ use App\Services\ChatHistoryService;
 use App\Services\GeminiChatService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ChatController extends Controller
 {
@@ -50,14 +51,22 @@ class ChatController extends Controller
      */
     public function getConversations(Request $request): JsonResponse
     {
-        $conversations = $this->chatHistoryService->getConversations(
-            $request->user()->id
-        );
+        try {
+            $conversations = $this->chatHistoryService->getConversations(
+                $request->user()->id
+            );
 
-        return response()->json([
-            'success' => true,
-            'conversations' => $conversations,
-        ]);
+            return response()->json([
+                'success' => true,
+                'conversations' => $conversations,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch conversations', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to load conversations. Please try again.',
+            ], 500);
+        }
     }
 
     /**
@@ -65,6 +74,18 @@ class ChatController extends Controller
      */
     public function getConversationMessages(Request $request, int $conversationId): JsonResponse
     {
+        // Verify ownership - users can only access their own conversations
+        $conversation = \App\Models\ChatConversation::where('id', $conversationId)
+            ->where('user_id', $request->user()->id)
+            ->first();
+        
+        if (!$conversation) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Conversation not found.',
+            ], 404);
+        }
+
         $messages = $this->chatHistoryService->getConversationMessages($conversationId);
 
         return response()->json([
@@ -78,11 +99,98 @@ class ChatController extends Controller
      */
     public function deleteConversation(Request $request, int $conversationId): JsonResponse
     {
-        $this->chatHistoryService->deleteConversation($conversationId);
+        try {
+            // Verify ownership - users can only delete their own conversations
+            $conversation = \App\Models\ChatConversation::where('id', $conversationId)
+                ->where('user_id', $request->user()->id)
+                ->first();
+            
+            if (!$conversation) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Conversation not found.',
+                ], 404);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Conversation deleted successfully.',
-        ]);
+            $this->chatHistoryService->deleteConversation($conversationId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Conversation deleted successfully.',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to delete conversation', ['id' => $conversationId, 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to delete conversation. Please try again.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete a specific message (for cancellation cleanup).
+     */
+    public function deleteMessage(Request $request, int $messageId): JsonResponse
+    {
+        try {
+            // Verify ownership - message must belong to a conversation owned by user
+            $message = \App\Models\ChatMessage::with('conversation')
+                ->where('id', $messageId)
+                ->first();
+            
+            if (!$message || !$message->conversation || $message->conversation->user_id !== $request->user()->id) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Message not found.',
+                ], 404);
+            }
+
+            $this->chatHistoryService->deleteMessage($messageId);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Message deleted successfully.',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to delete message', ['id' => $messageId, 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to delete message. Please try again.',
+            ], 500);
+        }
+    }
+
+    /**
+     * Cancel and clean up the last user message from a conversation.
+     * Used when user cancels an in-flight request before AI responds.
+     */
+    public function cancelLastMessage(Request $request, int $conversationId): JsonResponse
+    {
+        try {
+            // Verify ownership
+            $conversation = \App\Models\ChatConversation::where('id', $conversationId)
+                ->where('user_id', $request->user()->id)
+                ->first();
+            
+            if (!$conversation) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Conversation not found.',
+                ], 404);
+            }
+
+            $deleted = $this->chatHistoryService->deleteLastUserMessage($conversationId);
+
+            return response()->json([
+                'success' => true,
+                'deleted' => $deleted,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to cancel message', ['conversation_id' => $conversationId, 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to cancel message. Please try again.',
+            ], 500);
+        }
     }
 }

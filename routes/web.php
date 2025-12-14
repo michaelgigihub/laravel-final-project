@@ -20,10 +20,15 @@ Route::get('/api/patients', [\App\Http\Controllers\Api\PatientController::class,
 
 // AI Chat API endpoints
 Route::middleware(['auth', 'verified', 'password.changed'])->group(function () {
-    Route::post('/api/chat', [ChatController::class, 'sendMessage'])->name('chat.send');
+    // Rate limit chat endpoint: 30 requests per minute to prevent abuse
+    Route::post('/api/chat', [ChatController::class, 'sendMessage'])
+        ->middleware('throttle:30,1')
+        ->name('chat.send');
     Route::get('/api/chat/conversations', [ChatController::class, 'getConversations'])->name('chat.conversations');
     Route::get('/api/chat/conversations/{id}/messages', [ChatController::class, 'getConversationMessages'])->name('chat.messages');
     Route::delete('/api/chat/conversations/{id}', [ChatController::class, 'deleteConversation'])->name('chat.delete');
+    Route::delete('/api/chat/messages/{id}', [ChatController::class, 'deleteMessage'])->name('chat.message.delete');
+    Route::delete('/api/chat/conversations/{id}/cancel', [ChatController::class, 'cancelLastMessage'])->name('chat.cancel');
 });
 
 Route::get('/', function () {

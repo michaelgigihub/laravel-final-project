@@ -122,4 +122,35 @@ class ChatHistoryService
 
         return $this->createConversation($userId);
     }
+
+    /**
+     * Delete a specific message by ID.
+     *
+     * @param int $messageId
+     * @return bool
+     */
+    public function deleteMessage(int $messageId): bool
+    {
+        return ChatMessage::destroy($messageId) > 0;
+    }
+
+    /**
+     * Delete the last user message from a conversation (for cancel cleanup).
+     *
+     * @param int $conversationId
+     * @return bool
+     */
+    public function deleteLastUserMessage(int $conversationId): bool
+    {
+        $lastUserMessage = ChatMessage::where('conversation_id', $conversationId)
+            ->where('role', 'user')
+            ->orderBy('created_at', 'desc')
+            ->first();
+        
+        if ($lastUserMessage) {
+            return $lastUserMessage->delete();
+        }
+        
+        return false;
+    }
 }

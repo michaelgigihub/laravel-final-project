@@ -1,13 +1,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { MessageCircle, Send, Bot, User, Plus, ChevronDown, PanelRightClose, Trash2 } from 'lucide-react';
+import { MessageCircle, Send, Bot, User, Plus, ChevronDown, PanelRightClose, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAnimatedText } from '@/components/ui/animated-text';
-import { PromptSuggestion } from '@/components/ui/prompt-suggestion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { usePage } from '@inertiajs/react';
@@ -85,15 +84,9 @@ export function DentalChatBot() {
     const [isHistoryLoading, setIsHistoryLoading] = useState(false);
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
     const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            id: 'welcome',
-            role: 'assistant',
-            content: "Hello! I'm your dental assistant. How can I help you today?",
-            isAnimated: false
-        }
-    ]);
+    const [messages, setMessages] = useState<Message[]>([]);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
     
     // Resize Logic
     const DEFAULT_WIDTH = 600;
@@ -224,8 +217,13 @@ export function DentalChatBot() {
     const handleSendMessage = async (text: string) => {
         if (!text.trim() || isLoading) return;
 
+        // Cancel any pending request before starting a new one
+        abortControllerRef.current?.abort();
+        abortControllerRef.current = new AbortController();
+
+        const tempId = Date.now().toString();
         const userMessage: Message = {
-            id: Date.now().toString(),
+            id: tempId,
             role: 'user',
             content: text,
         };
@@ -238,6 +236,9 @@ export function DentalChatBot() {
             const response = await axios.post('/api/chat', { 
                 message: text,
                 conversation_id: currentConversationId 
+            }, {
+                signal: abortControllerRef.current.signal,
+                timeout: 30000, // 30 second timeout
             });
             
             const aiMessage: Message = {
@@ -254,7 +255,13 @@ export function DentalChatBot() {
                 setCurrentConversationId(response.data.conversation_id);
                 fetchConversations(); // Refresh conversation list
             }
-        } catch {
+        } catch (error) {
+            // Silently ignore cancelled requests
+            if (axios.isCancel(error)) return;
+            
+            // Rollback: remove the user message on failure
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+            
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
@@ -272,14 +279,36 @@ export function DentalChatBot() {
         handleSendMessage(query);
     };
 
+    const handleCancelRequest = async () => {
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+            abortControllerRef.current = null;
+            setIsLoading(false);
+            
+            // Remove the pending user message from UI (last message if it's from user)
+            setMessages(prev => {
+                if (prev.length > 0 && prev[prev.length - 1].role === 'user') {
+                    return prev.slice(0, -1);
+                }
+                return prev;
+            });
+            
+            // Delete the last user message from DB if we have an active conversation
+            if (currentConversationId) {
+                try {
+                    await axios.delete(`/api/chat/conversations/${currentConversationId}/cancel`);
+                } catch (error) {
+                    console.error('Failed to delete cancelled message:', error);
+                }
+            }
+        }
+    };
+
     const handleNewChat = () => {
+        // Cancel any pending requests when starting new chat
+        abortControllerRef.current?.abort();
         setCurrentConversationId(null);
-        setMessages([{
-            id: Date.now().toString(),
-            role: 'assistant',
-            content: "Started a new chat! How can I help you?",
-            isAnimated: true
-        }]);
+        setMessages([]);
     };
 
     const handleDeleteConversation = async (conversationId: number, e: React.MouseEvent) => {
@@ -341,6 +370,7 @@ export function DentalChatBot() {
                 side="right"
                 className={`p-0 gap-0 [&>button]:hidden ${isResizing ? 'transition-none' : 'transition-all duration-300 ease-in-out'}`}
                 style={{ width: `${width}px`, maxWidth: `${maxWidth}px` }}
+                onInteractOutside={(e) => e.preventDefault()}
             >
                 {/* Resize Handle */}
                 <div
@@ -426,84 +456,100 @@ export function DentalChatBot() {
                         </div>
                     </SheetHeader>
 
-                    {/* Messages */}
+                    {/* Messages or Welcome Screen */}
                     <div className="flex-1 overflow-hidden relative">
                         <ScrollArea ref={scrollAreaRef} className="h-full px-6 py-4">
-                            <div className="space-y-4 pb-4">
-                                {isHistoryLoading ? (
-                                    <div className="flex flex-col items-center justify-center h-full py-10 space-y-4">
-                                         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                                         <p className="text-sm text-muted-foreground">Loading history...</p>
+                            {isHistoryLoading ? (
+                                <div className="flex flex-col items-center justify-center h-full py-10 space-y-4">
+                                     <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                                     <p className="text-sm text-muted-foreground">Loading history...</p>
+                                </div>
+                            ) : messages.length === 0 ? (
+                                /* Welcome Screen */
+                                <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+                                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+                                        <Bot className="h-7 w-7 text-primary" />
                                     </div>
-                                ) : (
-                                    messages.map((message) => (
-                                    <div
-                                        key={message.id}
-                                        className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                                    >
-                                        {message.role === 'assistant' && (
-                                            <Avatar className="h-8 w-8 flex-shrink-0">
+                                    <h2 className="text-xl font-semibold mb-1">
+                                        Hi {auth.user?.name?.split(' ')[0] || 'there'},
+                                    </h2>
+                                    <p className="text-2xl font-bold mb-3">Welcome back! How can I help?</p>
+                                    <p className="text-sm text-muted-foreground mb-8 max-w-sm">
+                                        I'm here to help you with appointments, treatments, and clinic info. Choose an action or just ask me anything!
+                                    </p>
+                                    <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                                        {suggestions.map((suggestion, i) => (
+                                            <Button
+                                                key={i}
+                                                variant="outline"
+                                                size="sm"
+                                                className="rounded-full text-xs px-4 py-2 h-auto border-muted-foreground/20 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+                                                onClick={() => handleSendMessage(suggestion)}
+                                            >
+                                                {suggestion}
+                                            </Button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Chat Messages */
+                                <div className="space-y-4 pb-4">
+                                    {messages.map((message) => (
+                                        <div
+                                            key={message.id}
+                                            className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                                        >
+                                            {message.role === 'assistant' && (
+                                                <Avatar className="h-8 w-8 flex-shrink-0">
+                                                    <AvatarFallback className="bg-primary text-primary-foreground">
+                                                        <Bot className="h-4 w-4" />
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                            <div
+                                                className={`rounded-2xl px-4 py-2 max-w-[80%] ${
+                                                    message.role === 'user'
+                                                        ? 'bg-primary text-primary-foreground'
+                                                        : 'bg-muted'
+                                                }`}
+                                            >
+                                                {message.isAnimated ? (
+                                                    <AnimatedMessage text={message.content} />
+                                                ) : (
+                                                    <p className="text-sm whitespace-pre-wrap break-words">{formatMessage(message.content)}</p>
+                                                )}
+                                            </div>
+                                            {message.role === 'user' && (
+                                                <Avatar className="h-8 w-8 flex-shrink-0">
+                                                    <AvatarFallback>
+                                                        <User className="h-4 w-4" />
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                            )}
+                                        </div>
+                                    ))}
+                                    {isLoading && (
+                                        <div className="flex gap-3">
+                                            <Avatar className="h-8 w-8">
                                                 <AvatarFallback className="bg-primary text-primary-foreground">
                                                     <Bot className="h-4 w-4" />
                                                 </AvatarFallback>
                                             </Avatar>
-                                        )}
-                                        <div
-                                            className={`rounded-2xl px-4 py-2 max-w-[80%] ${
-                                                message.role === 'user'
-                                                    ? 'bg-primary text-primary-foreground'
-                                                    : 'bg-muted'
-                                            }`}
-                                        >
-                                            {message.isAnimated ? (
-                                                <AnimatedMessage text={message.content} />
-                                            ) : (
-                                                <p className="text-sm whitespace-pre-wrap break-words">{formatMessage(message.content)}</p>
-                                            )}
-                                        </div>
-                                        {message.role === 'user' && (
-                                            <Avatar className="h-8 w-8 flex-shrink-0">
-                                                <AvatarFallback>
-                                                    <User className="h-4 w-4" />
-                                                </AvatarFallback>
-                                            </Avatar>
-                                        )}
-                                    </div>
-                                    ))
-                                )}
-                                {isLoading && (
-                                    <div className="flex gap-3">
-                                        <Avatar className="h-8 w-8">
-                                            <AvatarFallback className="bg-primary text-primary-foreground">
-                                                <Bot className="h-4 w-4" />
-                                            </AvatarFallback>
-                                        </Avatar>
-                                        <div className="bg-muted rounded-2xl px-4 py-3">
-                                            <div className="flex gap-1">
-                                                <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                                <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                                <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                            <div className="bg-muted rounded-2xl px-4 py-3">
+                                                <div className="flex gap-1">
+                                                    <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                                    <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                                    <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )}
                         </ScrollArea>
                     </div>
 
                     <div className="px-4 pt-4 pb-8 bg-transparent space-y-4 relative z-10">
-                         {messages.length === 1 && (
-                            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent mask-linear-fade">
-                                {suggestions.map((suggestion, i) => (
-                                    <PromptSuggestion
-                                        key={i}
-                                        onClick={() => handleSendMessage(suggestion)}
-                                    >
-                                        {suggestion}
-                                    </PromptSuggestion>
-                                ))}
-                            </div>
-                        )}
 
                         <form onSubmit={handleFormSubmit} className="flex gap-2">
                             <Input
@@ -513,9 +559,21 @@ export function DentalChatBot() {
                                 className="flex-1"
                                 disabled={isLoading}
                             />
-                            <Button type="submit" size="icon" disabled={isLoading || !query.trim()}>
-                                <Send className="h-4 w-4" />
-                            </Button>
+                            {isLoading ? (
+                                <Button 
+                                    type="button" 
+                                    size="icon" 
+                                    variant="destructive"
+                                    onClick={handleCancelRequest}
+                                    title="Cancel request"
+                                >
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            ) : (
+                                <Button type="submit" size="icon" disabled={!query.trim()}>
+                                    <Send className="h-4 w-4" />
+                                </Button>
+                            )}
                         </form>
                     </div>
                 </div>

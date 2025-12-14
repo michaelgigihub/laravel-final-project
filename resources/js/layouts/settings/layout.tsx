@@ -6,11 +6,13 @@ import { edit as editAppearance } from '@/routes/appearance';
 import { edit as editPassword } from '@/routes/password';
 import { edit } from '@/routes/profile';
 import { show } from '@/routes/two-factor';
-import { type NavItem } from '@/types';
-import { Link } from '@inertiajs/react';
+import { type NavItem, type SharedData } from '@/types';
+import { Link, usePage } from '@inertiajs/react';
 import { type PropsWithChildren } from 'react';
 
-const sidebarNavItems: NavItem[] = [
+const ROLE_DENTIST = 2;
+
+const allSidebarNavItems: NavItem[] = [
     {
         title: 'Profile',
         href: edit(),
@@ -34,10 +36,21 @@ const sidebarNavItems: NavItem[] = [
 ];
 
 export default function SettingsLayout({ children }: PropsWithChildren) {
+    const { auth } = usePage<SharedData>().props;
+    const userRole = auth.user.role_id;
+
     // When server-side rendering, we only render the layout on the client...
     if (typeof window === 'undefined') {
         return null;
     }
+
+    // Filter out 'Profile' nav item for dentists (role_id = 2)
+    const sidebarNavItems = allSidebarNavItems.filter((item) => {
+        if (item.title === 'Profile' && userRole === ROLE_DENTIST) {
+            return false;
+        }
+        return true;
+    });
 
     const currentPath = window.location.pathname;
 
