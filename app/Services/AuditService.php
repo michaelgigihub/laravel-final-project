@@ -48,7 +48,7 @@ class AuditService
                     'action' => $log->activityTitle,
                     'performed_by' => $log->admin?->name ?? 'Unknown User',
                     'message' => $log->message,
-                    'date' => $log->created_at->format('M j, Y g:i A'),
+                    'date' => $log->created_at?->format('M j, Y g:i A') ?? 'Unknown',
                     'target_id' => $log->targetId,
                 ];
             })->toArray(),
@@ -56,14 +56,31 @@ class AuditService
     }
 
     /**
-     * Find who created a specific appointment by appointment ID or patient name.
+     * Find who created a specific appointment by appointment ID, patient name, or the last appointment.
      *
      * @param int|null $appointmentId
      * @param string|null $patientName
+     * @param bool $getLast If true, find the most recently created appointment
      * @return array
      */
-    public function findAppointmentCreator(?int $appointmentId = null, ?string $patientName = null): array
+    public function findAppointmentCreator(?int $appointmentId = null, ?string $patientName = null, bool $getLast = false): array
     {
+        // If getLast is true, find the most recently created appointment
+        if ($getLast && !$appointmentId && !$patientName) {
+            $appointment = Appointment::with('patient')
+                ->latest('created_at')
+                ->first();
+
+            if (!$appointment) {
+                return [
+                    'found' => false,
+                    'message' => 'No appointments exist in the system.',
+                ];
+            }
+
+            $appointmentId = $appointment->id;
+        }
+
         // If patient name is provided, find the appointment first
         if ($patientName && !$appointmentId) {
             $searchTerm = '%' . strtolower($patientName) . '%';
@@ -118,7 +135,7 @@ class AuditService
             'appointment_id' => $appointmentId,
             'patient_name' => $appointment?->patient?->name ?? 'Unknown',
             'created_by' => $createLog->admin?->name ?? 'Unknown User',
-            'created_at' => $createLog->created_at->format('M j, Y g:i A'),
+            'created_at' => $createLog->created_at?->format('M j, Y g:i A') ?? 'Unknown',
             'message' => $createLog->message,
         ];
     }
@@ -282,4 +299,44 @@ class AuditService
             })->toArray(),
         ];
     }
+
+    /**
+     * Log sensitive AI chat tool invocations for security auditing.
+     * 
+     * @param int $userId The user who invoked the tool
+     * @param string $toolName Name of the AI tool function called
+     * @param array $arguments Arguments passed to the tool (sanitized)
+     * @return void
+     */
+    public function logChatQuery(int $userId, string $toolName, array $arguments = []): void
+    {
+        try {
+            // Sanitize arguments to avoid logging sensitive data
+            $sanitizedArgs = [];
+            foreach ($arguments as $key => $value) {
+                if (is_string($value) && strlen($value) > 100) {
+                    $sanitizedArgs[$key] = substr($value, 0, 100) . '...';
+                } else {
+                    $sanitizedArgs[$key] = $value;
+                }
+            }
+
+            AdminAudit::create([
+                'admin_id' => $userId,
+                'moduleType' => 'ai-assistant',
+                'targetType' => 'ai-tool',
+                'targetId' => null,
+                'activityTitle' => 'AI Tool Invoked',
+                'message' => "User invoked AI tool: {$toolName}" . 
+                    (!empty($sanitizedArgs) ? " with parameters: " . json_encode($sanitizedArgs) : ""),
+            ]);
+        } catch (\Exception $e) {
+            // Log silently fails - don't break chat functionality
+            \Illuminate\Support\Facades\Log::warning('Failed to log chat query', [
+                'tool' => $toolName,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
 }
+

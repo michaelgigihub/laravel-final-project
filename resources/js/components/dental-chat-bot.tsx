@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
-import { MessageCircle, Send, Bot, User, Plus, ChevronDown, PanelRightClose, Trash2, X } from 'lucide-react';
+import { MessageCircle, Send, Bot, User, Plus, ChevronDown, PanelRightClose, Trash2, X, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,11 +31,155 @@ interface ApiMessage {
     content: string;
 }
 
-const formatBold = (text: string) => {
+// Category to suggested questions mapping
+const categoryQuestions: Record<string, string[]> = {
+    // Admin categories
+    'Dashboard & Analytics': [
+        "How much is our income this month?",
+        "What are the appointment statistics this week?",
+        "What are the most popular treatments?",
+        "When is the clinic busiest this week?",
+        "What's the age breakdown of our patients?",
+    ],
+    'Dentist Management': [
+        "Who is the busiest dentist this month?",
+        "Compare workload between dentists",
+        "List all employed dentists",
+        "When is Dr. [Name] available this week?",
+        "Find dentists who specialize in Orthodontics",
+    ],
+    'Patient & Treatment Records': [
+        "Get details for patient [Name]",
+        "Search for female patients over 40",
+        "What treatments has [Patient Name] received?",
+        "What treatments have been done on tooth [#14]?",
+        "Which patients have birthdays this month?",
+        "Show treatment notes for [Patient Name]",
+    ],
+    'Appointments & Logs': [
+        "What appointments are scheduled for today?",
+        "Who created the last appointment?",
+        "Why are appointments being cancelled?",
+        "Search audit logs for 'deleted'",
+        "Show activity logs from this week",
+    ],
+    // Dentist categories
+    'My Schedule': [
+        "What's my schedule for today?",
+        "Show my appointments this week",
+        "When is my next available slot?",
+    ],
+    'My Patients': [
+        "List all my patients",
+        "Search my patients named [Name]",
+        "Who are my patients scheduled this week?",
+        "Which of my patients have birthdays this month?",
+    ],
+    'Patient Records': [
+        "Get details for patient [Name]",
+        "What's the treatment history for [Patient Name]?",
+        "What treatments have been done on tooth [#14]?",
+        "Show my treatment notes for [Patient Name]",
+    ],
+    'General': [
+        "What are the clinic hours?",
+        "How much does a tooth extraction cost?",
+        "List all treatment types",
+    ],
+    // Guest categories
+    'Treatments': [
+        "What services do you offer?",
+        "How much does teeth cleaning cost?",
+        "How long does a root canal take?",
+    ],
+    'Dentists': [
+        "Who are your dentists?",
+        "What specializations do you have?",
+        "Do you have an orthodontist?",
+    ],
+};
+
+// Check if a question has placeholder brackets like [Name]
+const hasPlaceholder = (text: string): boolean => {
+    return /\[.*?\]/.test(text);
+};
+
+// Interactive category component
+const InteractiveCategory = ({ 
+    category, 
+    onQuestionClick,
+    onQuestionFill,
+}: { 
+    category: string; 
+    onQuestionClick: (question: string) => void;
+    onQuestionFill: (question: string) => void;
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const questions = categoryQuestions[category];
+    
+    if (!questions) {
+        return <strong className="font-bold text-foreground">{category}</strong>;
+    }
+
+    const handleQuestionClick = (question: string) => {
+        if (hasPlaceholder(question)) {
+            // Has placeholder - just fill input for user to edit
+            onQuestionFill(question);
+        } else {
+            // No placeholder - auto-send
+            onQuestionClick(question);
+        }
+    };
+    
+    return (
+        <span className="inline">
+            <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="font-bold text-foreground underline decoration-dotted underline-offset-2 hover:text-primary hover:decoration-solid transition-colors cursor-pointer inline-flex items-center gap-0.5"
+            >
+                {category}
+                <ChevronRight className={`size-3.5 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+            </button>
+            {isExpanded && (
+                <span className="block mt-2 ml-2 space-y-1">
+                    {questions.map((q, idx) => (
+                        <button
+                            key={idx}
+                            onClick={() => handleQuestionClick(q)}
+                            className="block text-sm text-muted-foreground hover:text-primary hover:underline cursor-pointer transition-colors text-left"
+                        >
+                            → {q}
+                            {hasPlaceholder(q) && <span className="text-xs text-muted-foreground/60 ml-1">(edit)</span>}
+                        </button>
+                    ))}
+                </span>
+            )}
+        </span>
+    );
+};
+
+// Check if text matches a known category
+const isKnownCategory = (text: string): boolean => {
+    return Object.keys(categoryQuestions).includes(text);
+};
+
+const formatBold = (text: string, onQuestionClick?: (question: string) => void, onQuestionFill?: (question: string) => void) => {
     const parts = text.split(/(\*\*.*?\*\*)/g);
     return parts.map((part, index) => {
         if (part.startsWith('**') && part.endsWith('**')) {
-            return <strong key={index} className="font-bold text-foreground">{part.slice(2, -2)}</strong>;
+            const boldText = part.slice(2, -2);
+            // Remove trailing colon for category matching
+            const categoryName = boldText.replace(/:$/, '');
+            
+            if (onQuestionClick && onQuestionFill && isKnownCategory(categoryName)) {
+                return (
+                    <span key={index}>
+                        <InteractiveCategory category={categoryName} onQuestionClick={onQuestionClick} onQuestionFill={onQuestionFill} />
+                        {boldText.endsWith(':') ? ':' : ''}
+                    </span>
+                );
+            }
+            return <strong key={index} className="font-bold text-foreground">{boldText}</strong>;
         }
         return <span key={index}>{part}</span>;
     });
@@ -84,7 +228,7 @@ const parseMarkdownTable = (lines: string[], startIndex: number): { table: { hea
     return { table: { headers, rows }, endIndex: currentIndex - 1 };
 };
 
-const formatMessage = (content: string, maxTableWidth?: number) => {
+const formatMessage = (content: string, maxTableWidth?: number, onQuestionClick?: (question: string) => void, onQuestionFill?: (question: string) => void) => {
     const lines = content.split('\n');
     const formattedElements: React.ReactNode[] = [];
     let listItems: React.ReactNode[] = [];
@@ -139,14 +283,14 @@ const formatMessage = (content: string, maxTableWidth?: number) => {
         // Handle list items
         if (trimmedLine.startsWith('* ')) {
             const listContent = trimmedLine.substring(2);
-            listItems.push(<li key={`li-${i}`} className="mb-1">{formatBold(listContent)}</li>);
+            listItems.push(<li key={`li-${i}`} className="mb-1">{formatBold(listContent, onQuestionClick, onQuestionFill)}</li>);
         } else {
             if (listItems.length > 0) {
                 formattedElements.push(<ul key={`ul-${i}`} className="list-disc pl-5 mb-2 space-y-1">{listItems}</ul>);
                 listItems = [];
             }
             if (line !== '') {
-                formattedElements.push(<p key={`p-${i}`} className="mb-1 last:mb-0 min-h-[1.2em]">{formatBold(line)}</p>);
+                formattedElements.push(<p key={`p-${i}`} className="mb-1 last:mb-0 min-h-[1.2em]">{formatBold(line, onQuestionClick, onQuestionFill)}</p>);
             }
         }
         i++;
@@ -159,10 +303,53 @@ const formatMessage = (content: string, maxTableWidth?: number) => {
     return <div className="leading-relaxed">{formattedElements}</div>;
 };
 
-const AnimatedMessage = ({ text, maxTableWidth }: { text: string; maxTableWidth?: number }) => {
+const AnimatedMessage = ({ 
+    text, 
+    maxTableWidth, 
+    onQuestionClick, 
+    onQuestionFill,
+    onAnimationComplete 
+}: { 
+    text: string; 
+    maxTableWidth?: number; 
+    onQuestionClick?: (question: string) => void; 
+    onQuestionFill?: (question: string) => void;
+    onAnimationComplete?: () => void;
+}) => {
     const animatedText = useAnimatedText(text, " ");
-    return formatMessage(animatedText, maxTableWidth);
+    
+    useEffect(() => {
+        if (animatedText === text && onAnimationComplete) {
+            onAnimationComplete();
+        }
+    }, [animatedText, text, onAnimationComplete]);
+
+    return formatMessage(animatedText, maxTableWidth, onQuestionClick, onQuestionFill);
 }
+
+const ThinkingAnimation = () => {
+    const [seconds, setSeconds] = useState(0);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setSeconds(s => s + 1);
+        }, 1000);
+        return () => clearInterval(interval);
+    }, []);
+
+    return (
+        <div className="flex flex-col gap-1 items-start">
+            <div className="bg-muted rounded-2xl px-4 py-3 flex items-center gap-2 w-fit">
+                <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+            </div>
+            <span className="text-xs text-foreground/50 ml-2">Toother is thinking ({seconds}s)</span>
+        </div>
+    );
+};
 
 export function DentalChatBot() {
     // Get persistent state from context
@@ -182,11 +369,6 @@ export function DentalChatBot() {
     } = useChatContext();
 
     const userRole = user?.role_id;
-
-    useEffect(() => {
-        console.log('DentalChatBot User:', user);
-        console.log('DentalChatBot User Avatar URL:', user?.avatar_url);
-    }, [user]);
 
     // Local-only state (doesn't need to persist)
     const [query, setQuery] = useState('');
@@ -328,6 +510,12 @@ export function DentalChatBot() {
         } finally {
             setIsHistoryLoading(false);
         }
+    };
+
+    const handleAnimationComplete = (messageId: string) => {
+        setMessages(prev => prev.map(msg => 
+            msg.id === messageId ? { ...msg, isAnimated: false } : msg
+        ));
     };
 
     const handleSendMessage = async (text: string) => {
@@ -518,7 +706,7 @@ export function DentalChatBot() {
                                     <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
                                 </div>
                                 <div>
-                                    <h3 className="font-semibold text-lg">AI Assistant</h3>
+                                    <h3 className="font-semibold text-lg">Toother AI</h3>
                                     <p className="text-xs text-muted-foreground">Always here to help</p>
                                 </div>
                             </div>
@@ -648,9 +836,15 @@ export function DentalChatBot() {
                                                 }`}
                                             >
                                                 {message.isAnimated ? (
-                                                    <AnimatedMessage text={message.content} maxTableWidth={Math.floor(width * 0.8 - 80)} />
+                                                    <AnimatedMessage 
+                                                        text={message.content} 
+                                                        maxTableWidth={Math.floor(width * 0.8 - 80)} 
+                                                        onQuestionClick={handleSendMessage} 
+                                                        onQuestionFill={setQuery} 
+                                                        onAnimationComplete={() => handleAnimationComplete(message.id)} 
+                                                    />
                                                 ) : (
-                                                    <div className="text-sm whitespace-pre-wrap break-words">{formatMessage(message.content, Math.floor(width * 0.8 - 80))}</div>
+                                                    <div className="text-sm whitespace-pre-wrap break-words">{formatMessage(message.content, Math.floor(width * 0.8 - 80), handleSendMessage, setQuery)}</div>
                                                 )}
                                             </div>
                                             {message.role === 'user' && (
@@ -670,13 +864,7 @@ export function DentalChatBot() {
                                                     <Bot className="h-4 w-4" />
                                                 </AvatarFallback>
                                             </Avatar>
-                                            <div className="bg-muted rounded-2xl px-4 py-3">
-                                                <div className="flex gap-1">
-                                                    <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                                                    <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                                                    <div className="w-2 h-2 bg-foreground/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                                                </div>
-                                            </div>
+                                            <ThinkingAnimation />
                                         </div>
                                     )}
                                 </div>

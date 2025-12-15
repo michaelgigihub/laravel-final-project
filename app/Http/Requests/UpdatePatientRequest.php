@@ -29,7 +29,7 @@ class UpdatePatientRequest extends FormRequest
             'contact_number' => 'nullable|string|max:20',
             'email' => 'nullable|email|max:255',
             'date_of_birth' => 'required|date',
-            'address' => 'nullable|string|max:500',
+            'address' => 'required|string|max:500',
         ];
     }
 

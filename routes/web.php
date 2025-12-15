@@ -67,6 +67,7 @@ Route::middleware(['auth', 'verified', 'password.changed'])->group(function () {
     Route::get('appointments/{appointment}/treatment-records/{treatmentRecord}/edit', [TreatmentRecordController::class, 'edit'])->name('treatment-records.edit');
     Route::put('appointments/{appointment}/treatment-records/{treatmentRecord}/notes', [TreatmentRecordController::class, 'updateNotes'])->name('treatment-records.update-notes');
     Route::put('appointments/{appointment}/treatment-records/{treatmentRecord}/teeth', [TreatmentRecordController::class, 'updateTeeth'])->name('treatment-records.update-teeth');
+    Route::post('appointments/{appointment}/treatment-records/{treatmentRecord}/update', [TreatmentRecordController::class, 'update'])->name('treatment-records.update');
     Route::post('appointments/{appointment}/treatment-records/{treatmentRecord}/files', [TreatmentRecordController::class, 'uploadFile'])->name('treatment-records.upload-file');
     Route::delete('appointments/{appointment}/treatment-records/{treatmentRecord}/files/{file}', [TreatmentRecordController::class, 'deleteFile'])->name('treatment-records.delete-file');
 });

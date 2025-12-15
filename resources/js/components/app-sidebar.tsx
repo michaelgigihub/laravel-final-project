@@ -86,6 +86,16 @@ export function AppSidebar() {
         href: '/patients',
         icon: Users,
     });
+
+    // Admin-only items
+    if (isAdmin) {
+        mainNavItems.push({
+            title: 'Dentists',
+            href: admin.dentists.index(),
+            icon: Stethoscope,
+        });
+    }
+
     mainNavItems.push({
         title: isDentist ? 'My Appointments' : 'Appointments',
         href: '/appointments',
@@ -99,11 +109,6 @@ export function AppSidebar() {
 
     // Admin-only items
     if (isAdmin) {
-        mainNavItems.push({
-            title: 'Dentists',
-            href: admin.dentists.index(),
-            icon: Stethoscope,
-        });
         mainNavItems.push({
             title: 'Clinic Hours',
             href: '/admin/clinic-availability',

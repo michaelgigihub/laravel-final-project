@@ -66,11 +66,11 @@ class TreatmentService
             'treatments' => $foundTreatments->map(function ($t) {
                 return [
                     'name' => $t->name,
-                    'cost' => $t->standard_cost,
+                    'cost' => '₱' . number_format($t->standard_cost, 2),
                     'duration' => $t->duration_minutes . ' mins'
                 ];
             })->toArray(),
-            'total_estimated_cost' => $totalCost,
+            'total_estimated_cost' => '₱' . number_format($totalCost, 2),
             'not_found' => $missingTreatments
         ];
     }

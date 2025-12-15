@@ -41,8 +41,8 @@ const patientFormSchema = z.object({
     date_of_birth: z.string().min(1, 'Date of birth is required'),
     address: z
         .string()
-        .max(500, 'Address must not exceed 500 characters')
-        .optional(),
+        .min(1, 'Address is required')
+        .max(500, 'Address must not exceed 500 characters'),
 });
 
 type PatientFormData = z.infer<typeof patientFormSchema>;
@@ -163,7 +163,7 @@ export default function AddPatient({ errors = {} }: AddPatientProps) {
                             </FieldGroup>
 
                             <Field className="mt-4" data-invalid={!!(formErrors.address || errors.address)}>
-                                <FieldLabel>Address</FieldLabel>
+                                <FieldLabel>Address <span className="text-destructive">*</span></FieldLabel>
                                 <Textarea {...register('address')} placeholder="Complete Address" rows={3} aria-invalid={!!(formErrors.address || errors.address)} />
                                 <FieldError errors={[{ message: formErrors.address?.message || errors.address }]} />
                             </Field>

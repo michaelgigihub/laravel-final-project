@@ -218,6 +218,131 @@ class TreatmentRecordController extends Controller
     }
 
     /**
+     * Unified update for treatment record (notes, teeth, files).
+     */
+    public function update(Request $request, Appointment $appointment, TreatmentRecord $treatmentRecord)
+    {
+        $validated = $request->validate([
+            'treatment_notes' => ['nullable', 'string', 'max:5000'],
+            'tooth_ids' => ['nullable', 'array'],
+            'tooth_ids.*' => ['exists:teeth,id'],
+            'files' => ['nullable', 'array'],
+            'files.*' => ['file', 'max:10240', 'mimes:jpg,jpeg,png,gif,pdf,doc,docx'],
+            'deleted_file_ids' => ['nullable', 'array'],
+            'deleted_file_ids.*' => ['exists:treatment_record_files,id'],
+        ]);
+
+        // 1. Update Notes
+        if (array_key_exists('treatment_notes', $validated)) {
+            $oldNotes = $treatmentRecord->treatment_notes;
+            if ($oldNotes !== $validated['treatment_notes']) {
+                $treatmentRecord->update(['treatment_notes' => $validated['treatment_notes']]);
+                
+                $this->auditService->log(
+                    adminId: Auth::id(),
+                    activityTitle: 'Treatment Notes Updated',
+                    message: "Updated notes for treatment record #{$treatmentRecord->id}",
+                    moduleType: AuditModuleType::TREATMENT_MANAGEMENT,
+                    targetType: AuditTargetType::TREATMENT_RECORD,
+                    targetId: $treatmentRecord->id,
+                    oldValue: ['treatment_notes' => $oldNotes],
+                    newValue: ['treatment_notes' => $validated['treatment_notes']]
+                );
+            }
+        }
+
+        // 2. Update Teeth
+        if (array_key_exists('tooth_ids', $validated)) {
+            $oldTeethIds = $treatmentRecord->teeth->pluck('id')->sort()->values()->toArray();
+            $newTeethIds = collect($validated['tooth_ids'])->sort()->values()->toArray();
+
+            if ($oldTeethIds !== $newTeethIds) {
+                $treatmentRecord->teeth()->sync($validated['tooth_ids']);
+
+                $this->auditService->log(
+                    adminId: Auth::id(),
+                    activityTitle: 'Teeth Treated Updated',
+                    message: "Updated teeth selection for treatment record #{$treatmentRecord->id}",
+                    moduleType: AuditModuleType::TREATMENT_MANAGEMENT,
+                    targetType: AuditTargetType::TREATMENT_RECORD,
+                    targetId: $treatmentRecord->id,
+                    oldValue: ['tooth_ids' => $oldTeethIds],
+                    newValue: ['tooth_ids' => $validated['tooth_ids']]
+                );
+            }
+        }
+
+        // 3. Upload Files
+        if ($request->hasFile('files')) {
+            foreach ($request->file('files') as $file) {
+                // Check for duplicates
+                $originalName = $file->getClientOriginalName();
+                $existingFile = TreatmentRecordFile::where('appointment_treatment_record_id', $treatmentRecord->id)
+                    ->where('original_name', $originalName)
+                    ->exists();
+
+                if ($existingFile) {
+                    $nameWithoutExt = pathinfo($originalName, PATHINFO_FILENAME);
+                    $extension = $file->getClientOriginalExtension();
+                    $originalName = $nameWithoutExt . '_' . time() . '.' . $extension;
+                }
+
+                $path = $file->store('treatment-records/' . $treatmentRecord->id, 'public');
+
+                $recordFile = TreatmentRecordFile::create([
+                    'appointment_treatment_record_id' => $treatmentRecord->id,
+                    'file_path' => $path,
+                    'original_name' => $originalName,
+                    'mime_type' => $file->getMimeType(),
+                    'size' => $file->getSize(),
+                ]);
+
+                $this->auditService->log(
+                    adminId: Auth::id(),
+                    activityTitle: 'Treatment File Uploaded',
+                    message: "Uploaded file '{$recordFile->original_name}' to treatment record #{$treatmentRecord->id}",
+                    moduleType: AuditModuleType::TREATMENT_MANAGEMENT,
+                    targetType: AuditTargetType::TREATMENT_RECORD,
+                    targetId: $treatmentRecord->id,
+                    newValue: [
+                        'file_id' => $recordFile->id,
+                        'file_name' => $recordFile->original_name,
+                        'mime_type' => $recordFile->mime_type,
+                    ]
+                );
+            }
+        }
+
+        // 4. Delete Files
+        if (array_key_exists('deleted_file_ids', $validated) && !empty($validated['deleted_file_ids'])) {
+             $filesToDelete = TreatmentRecordFile::whereIn('id', $validated['deleted_file_ids'])
+                 ->where('appointment_treatment_record_id', $treatmentRecord->id)
+                 ->get();
+
+             foreach ($filesToDelete as $file) {
+                 Storage::disk('public')->delete($file->file_path);
+                 $file->delete();
+                 
+                 $this->auditService->log(
+                    adminId: Auth::id(),
+                    activityTitle: 'Treatment File Deleted',
+                    message: "Deleted file '{$file->original_name}' from treatment record #{$treatmentRecord->id}",
+                    moduleType: AuditModuleType::TREATMENT_MANAGEMENT,
+                    targetType: AuditTargetType::TREATMENT_RECORD,
+                    targetId: $treatmentRecord->id,
+                    oldValue: [
+                        'file_id' => $file->id,
+                        'file_name' => $file->original_name,
+                        'mime_type' => $file->mime_type,
+                    ]
+                );
+             }
+        }
+
+        return back()->with('success', 'Treatment record updated successfully.');
+    }
+
+    /**
      * Upload file for a treatment record.
      */
     public function uploadFile(Request $request, Appointment $appointment, TreatmentRecord $treatmentRecord)
@@ -229,10 +354,22 @@ class TreatmentRecordController extends Controller
         $file = $request->file('file');
         $path = $file->store('treatment-records/' . $treatmentRecord->id, 'public');
 
+        // Handle duplicate file names by appending timestamp
+        $originalName = $file->getClientOriginalName();
+        $existingWithSameName = TreatmentRecordFile::where('appointment_treatment_record_id', $treatmentRecord->id)
+            ->where('original_name', $originalName)
+            ->exists();
+
+        if ($existingWithSameName) {
+            $extension = pathinfo($originalName, PATHINFO_EXTENSION);
+            $basename = pathinfo($originalName, PATHINFO_FILENAME);
+            $originalName = "{$basename}_" . time() . ".{$extension}";
+        }
+
         $recordFile = TreatmentRecordFile::create([
             'appointment_treatment_record_id' => $treatmentRecord->id,
             'file_path' => $path,
-            'original_name' => $file->getClientOriginalName(),
+            'original_name' => $originalName,
             'mime_type' => $file->getMimeType(),
             'size' => $file->getSize(),
         ]);

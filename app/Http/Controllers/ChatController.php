@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\SendChatMessageRequest;
+use App\Http\Requests\SendGuestMessageRequest;
 use App\Services\ChatHistoryService;
 use App\Services\GeminiChatService;
 use Illuminate\Http\JsonResponse;
@@ -18,61 +20,84 @@ class ChatController extends Controller
     /**
      * Handle incoming chat messages and return AI responses.
      */
-    public function sendMessage(Request $request): JsonResponse
+    public function sendMessage(SendChatMessageRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'message' => ['required', 'string', 'max:2000'],
-            'conversation_id' => ['nullable', 'integer', 'exists:chat_conversations,id'],
-        ]);
+        try {
+            $validated = $request->validated();
 
-        $result = $this->geminiChatService->handleChat(
-            $validated['message'],
-            $validated['conversation_id'] ?? null,
-            $request->user()
-        );
+            $result = $this->geminiChatService->handleChat(
+                $validated['message'],
+                $validated['conversation_id'] ?? null,
+                $request->user()
+            );
 
-        if (!$result['success']) {
+            if (!$result['success']) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $result['error'] ?? 'An error occurred processing your request.',
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'response' => $result['response'],
+                'conversation_id' => $result['conversation_id'] ?? null,
+                'function_called' => $result['function_called'] ?? null,
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Prompt injection or invalid input detected
             return response()->json([
                 'success' => false,
-                'error' => $result['error'] ?? 'An unknown error occurred.',
+                'error' => $e->getMessage(),
+            ], 400);
+        } catch (\Exception $e) {
+            Log::error('Chat error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'An error occurred processing your request.',
             ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'response' => $result['response'],
-            'conversation_id' => $result['conversation_id'] ?? null,
-            'function_called' => $result['function_called'] ?? null,
-        ]);
     }
 
     /**
      * Handle guest chat messages (no auth, no history).
      * Rate limited to 5 requests per minute.
      */
-    public function sendGuestMessage(Request $request): JsonResponse
+    public function sendGuestMessage(SendGuestMessageRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'message' => ['required', 'string', 'max:2000'],
-        ]);
+        try {
+            $validated = $request->validated();
 
-        $result = $this->geminiChatService->handleChat(
-            $validated['message'],
-            null, // No conversation persistence for guests
-            null  // No user context for guests
-        );
+            $result = $this->geminiChatService->handleChat(
+                $validated['message'],
+                null, // No conversation persistence for guests
+                null  // No user context for guests
+            );
 
-        if (!$result['success']) {
+            if (!$result['success']) {
+                return response()->json([
+                    'success' => false,
+                    'error' => $result['error'] ?? 'An error occurred processing your request.',
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'response' => $result['response'],
+            ]);
+        } catch (\InvalidArgumentException $e) {
+            // Prompt injection or invalid input detected
             return response()->json([
                 'success' => false,
-                'error' => $result['error'] ?? 'An unknown error occurred.',
+                'error' => $e->getMessage(),
+            ], 400);
+        } catch (\Exception $e) {
+            Log::error('Guest chat error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'error' => 'An error occurred processing your request.',
             ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'response' => $result['response'],
-        ]);
     }
 
     /**
