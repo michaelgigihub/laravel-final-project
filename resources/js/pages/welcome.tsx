@@ -28,10 +28,20 @@ interface WelcomeProps {
     dentists: Dentist[];
 }
 
+import { DentalChatBot } from '@/components/dental-chat-bot';
+import { useChatContext } from '@/contexts/chat-context';
+
 export default function Welcome({ treatmentTypes = [], dentists = [] }: WelcomeProps) {
     const { auth, name } = usePage<SharedData>().props;
+    const { setCustomTriggerMounted } = useChatContext();
     const tvFrameRef = useRef<HTMLDivElement>(null);
     const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        setCustomTriggerMounted(true);
+        return () => setCustomTriggerMounted(false);
+    }, [setCustomTriggerMounted]);
+
     const [currentSection, setCurrentSection] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
     const [hoveredDot, setHoveredDot] = useState<number | null>(null);
@@ -345,6 +355,9 @@ export default function Welcome({ treatmentTypes = [], dentists = [] }: WelcomeP
                 >
                     {/* TV Screen Border/Frame */}
                     <div className="relative mx-auto h-full overflow-hidden rounded-[8px] bg-brand-light sm:rounded-[12px] md:rounded-[16px] lg:rounded-[20px] xl:rounded-[24px]">
+                        {/* Custom Chat Bot Button via explicit placement */}
+                        <DentalChatBot className="absolute bottom-6 right-6 z-50 shadow-xl" />
+
                         {/* Scrollable Inner Content - The "TV Screen" */}
                         <div
                             ref={scrollContainerRef}

@@ -25,7 +25,7 @@ createInertiaApp({
                 <ChatProvider>
                     <AnimatedScrollbar />
                     <App {...props} />
-                    <DentalChatBot />
+                    <DentalChatBot isGlobal />
                 </ChatProvider>
             </ThemeProvider>,
         );

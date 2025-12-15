@@ -105,18 +105,18 @@ const hasPlaceholder = (text: string): boolean => {
 };
 
 // Interactive category component
-const InteractiveCategory = ({ 
-    category, 
+const InteractiveCategory = ({
+    category,
     onQuestionClick,
     onQuestionFill,
-}: { 
-    category: string; 
+}: {
+    category: string;
     onQuestionClick: (question: string) => void;
     onQuestionFill: (question: string) => void;
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const questions = categoryQuestions[category];
-    
+
     if (!questions) {
         return <strong className="font-bold text-foreground">{category}</strong>;
     }
@@ -130,7 +130,7 @@ const InteractiveCategory = ({
             onQuestionClick(question);
         }
     };
-    
+
     return (
         <span className="inline">
             <button
@@ -170,7 +170,7 @@ const formatBold = (text: string, onQuestionClick?: (question: string) => void, 
             const boldText = part.slice(2, -2);
             // Remove trailing colon for category matching
             const categoryName = boldText.replace(/:$/, '');
-            
+
             if (onQuestionClick && onQuestionFill && isKnownCategory(categoryName)) {
                 return (
                     <span key={index}>
@@ -192,39 +192,39 @@ const parseMarkdownTable = (lines: string[], startIndex: number): { table: { hea
     // Check if this looks like a table header row (contains |)
     const headerLine = lines[startIndex];
     if (!headerLine.includes('|')) return null;
-    
+
     // Next line should be separator (|---|---|)
     const separatorLine = lines[startIndex + 1];
     if (!separatorLine || !separatorLine.match(/^\|?[\s-:|]+\|?$/)) return null;
-    
+
     // Parse header
     const headers = headerLine
         .split('|')
         .map(h => h.trim())
         .filter(h => h.length > 0);
-    
+
     // Parse rows
     const rows: string[][] = [];
     let currentIndex = startIndex + 2;
-    
+
     while (currentIndex < lines.length) {
         const line = lines[currentIndex];
         if (!line.includes('|') || line.trim() === '') break;
-        
+
         const cells = line
             .split('|')
             .map(c => c.trim())
             .filter(c => c.length > 0 || line.startsWith('|'));
-        
+
         // Only add if row has content
         if (cells.some(c => c.length > 0)) {
             rows.push(cells.filter(c => c.length > 0));
         }
         currentIndex++;
     }
-    
+
     if (rows.length === 0) return null;
-    
+
     return { table: { headers, rows }, endIndex: currentIndex - 1 };
 };
 
@@ -237,7 +237,7 @@ const formatMessage = (content: string, maxTableWidth?: number, onQuestionClick?
     while (i < lines.length) {
         const line = lines[i];
         const trimmedLine = line.trim();
-        
+
         // Try to parse as table
         const tableResult = parseMarkdownTable(lines, i);
         if (tableResult) {
@@ -246,7 +246,7 @@ const formatMessage = (content: string, maxTableWidth?: number, onQuestionClick?
                 formattedElements.push(<ul key={`ul-${i}`} className="list-disc pl-5 mb-2 space-y-1">{listItems}</ul>);
                 listItems = [];
             }
-            
+
             // Render table with dynamic max-width based on chat width
             const { table, endIndex } = tableResult;
             const tableStyle = maxTableWidth ? { maxWidth: `${maxTableWidth}px` } : {};
@@ -279,7 +279,7 @@ const formatMessage = (content: string, maxTableWidth?: number, onQuestionClick?
             i = endIndex + 1;
             continue;
         }
-        
+
         // Handle list items
         if (trimmedLine.startsWith('* ')) {
             const listContent = trimmedLine.substring(2);
@@ -295,29 +295,29 @@ const formatMessage = (content: string, maxTableWidth?: number, onQuestionClick?
         }
         i++;
     }
-    
+
     if (listItems.length > 0) {
         formattedElements.push(<ul key={`ul-end-${lines.length}`} className="list-disc pl-5 mb-2 space-y-1">{listItems}</ul>);
     }
-    
+
     return <div className="leading-relaxed">{formattedElements}</div>;
 };
 
-const AnimatedMessage = ({ 
-    text, 
-    maxTableWidth, 
-    onQuestionClick, 
+const AnimatedMessage = ({
+    text,
+    maxTableWidth,
+    onQuestionClick,
     onQuestionFill,
-    onAnimationComplete 
-}: { 
-    text: string; 
-    maxTableWidth?: number; 
-    onQuestionClick?: (question: string) => void; 
+    onAnimationComplete
+}: {
+    text: string;
+    maxTableWidth?: number;
+    onQuestionClick?: (question: string) => void;
     onQuestionFill?: (question: string) => void;
     onAnimationComplete?: () => void;
 }) => {
     const animatedText = useAnimatedText(text, " ");
-    
+
     useEffect(() => {
         if (animatedText === text && onAnimationComplete) {
             onAnimationComplete();
@@ -351,7 +351,7 @@ const ThinkingAnimation = () => {
     );
 };
 
-export function DentalChatBot() {
+export function DentalChatBot({ className, isGlobal = false }: { className?: string; isGlobal?: boolean }) {
     // Get persistent state from context
     const {
         isOpen,
@@ -366,6 +366,7 @@ export function DentalChatBot() {
         setWidth,
         clearChat,
         user,
+        customTriggerMounted,
     } = useChatContext();
 
     const userRole = user?.role_id;
@@ -378,11 +379,11 @@ export function DentalChatBot() {
     const [conversationToDelete, setConversationToDelete] = useState<Conversation | null>(null);
     const scrollAreaRef = useRef<HTMLDivElement>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
-    
+
     // Resize Logic
     const DEFAULT_WIDTH = 700;
     const [isResizing, setIsResizing] = useState(false);
-    
+
     const minWidth = DEFAULT_WIDTH;
     const maxWidth = 1200;
 
@@ -492,7 +493,7 @@ export function DentalChatBot() {
         // Clear messages temporarily or show loading skeleton? 
         // Showing skeleton or keeping old messages is better than empty.
         // Let's keep old messages but maybe dim them or show spinner overlay.
-        
+
         try {
             const response = await axios.get(`/api/chat/conversations/${conversationId}/messages`);
             if (response.data.success) {
@@ -513,7 +514,7 @@ export function DentalChatBot() {
     };
 
     const handleAnimationComplete = (messageId: string) => {
-        setMessages(prev => prev.map(msg => 
+        setMessages(prev => prev.map(msg =>
             msg.id === messageId ? { ...msg, isAnimated: false } : msg
         ));
     };
@@ -539,7 +540,7 @@ export function DentalChatBot() {
         try {
             // Use guest endpoint for unauthenticated users
             const endpoint = user ? '/api/chat' : '/api/chat/guest';
-            const payload = user 
+            const payload = user
                 ? { message: text, conversation_id: currentConversationId }
                 : { message: text };
 
@@ -547,7 +548,7 @@ export function DentalChatBot() {
                 signal: abortControllerRef.current.signal,
                 timeout: 30000, // 30 second timeout
             });
-            
+
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
@@ -556,7 +557,7 @@ export function DentalChatBot() {
             };
 
             setMessages(prev => [...prev, aiMessage]);
-            
+
             // Update conversation ID if this was a new conversation (authenticated users only)
             if (user && response.data.conversation_id && !currentConversationId) {
                 setCurrentConversationId(response.data.conversation_id);
@@ -565,16 +566,16 @@ export function DentalChatBot() {
         } catch (error) {
             // Silently ignore cancelled requests
             if (axios.isCancel(error)) return;
-            
+
             // Rollback: remove the user message on failure
             setMessages(prev => prev.filter(m => m.id !== tempId));
-            
+
             // Check for rate limit error (HTTP 429)
             let errorContent = "I'm sorry, I encountered an error. Please try again.";
             if (axios.isAxiosError(error) && error.response?.status === 429) {
                 errorContent = "Too many requests. Please wait a moment and try again.";
             }
-            
+
             const errorMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
@@ -597,7 +598,7 @@ export function DentalChatBot() {
             abortControllerRef.current.abort();
             abortControllerRef.current = null;
             setIsLoading(false);
-            
+
             // Remove the pending user message from UI (last message if it's from user)
             setMessages(prev => {
                 if (prev.length > 0 && prev[prev.length - 1].role === 'user') {
@@ -605,7 +606,7 @@ export function DentalChatBot() {
                 }
                 return prev;
             });
-            
+
             // Delete the last user message from DB if we have an active conversation
             if (currentConversationId) {
                 try {
@@ -625,7 +626,7 @@ export function DentalChatBot() {
 
     const handleDeleteConversation = async (conversationId: number, e: React.MouseEvent) => {
         e.stopPropagation(); // Prevent loading the conversation
-        
+
         // Find the conversation to show in confirmation dialog
         const conv = conversations.find(c => c.id === conversationId);
         if (conv) {
@@ -636,15 +637,15 @@ export function DentalChatBot() {
 
     const confirmDelete = async () => {
         if (!conversationToDelete) return;
-        
+
         try {
             await axios.delete(`/api/chat/conversations/${conversationToDelete.id}`);
-            
+
             // If we deleted the current conversation, start a new one
             if (currentConversationId === conversationToDelete.id) {
                 handleNewChat();
             }
-            
+
             // Refresh conversation list
             fetchConversations();
         } catch (error) {
@@ -665,260 +666,261 @@ export function DentalChatBot() {
         }
     };
 
+    if (isGlobal && customTriggerMounted) {
+        return null;
+    }
+
     return (
         <>
-        <Sheet open={isOpen} onOpenChange={handleOpenChange} modal={false}>
-            <SheetTrigger asChild>
-                {!isOpen && (
-                    <Button
-                        className="fixed bottom-25 right-6 h-14 w-14 rounded-full shadow-lg hover:scale-110 transition-transform z-50"
-                        size="icon"
-                    >
-                        <MessageCircle className="h-6 w-6" />
-                    </Button>
-                )}
-            </SheetTrigger>
-            <SheetContent
-                side="right"
-                className={`p-0 gap-0 [&>button]:hidden rounded-l-3xl overflow-hidden ${(isResizing) ? 'transition-none' : 'transition-all duration-300 ease-in-out'}`}
-                style={{ width: `${width}px`, maxWidth: `${maxWidth}px` }}
-                onInteractOutside={(e) => e.preventDefault()}
-            >
-                {/* Resize Handle */}
-                <div
-                    className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/20 transition-colors z-50"
-                    onMouseDown={startResizing}
-                />
+            <Sheet open={isOpen} onOpenChange={handleOpenChange} modal={false}>
+                <SheetTrigger asChild>
+                    {!isOpen && (
+                        <Button
+                            className={`h-14 w-14 rounded-full shadow-lg hover:scale-110 transition-transform z-50 ${className || 'fixed bottom-6 right-6'}`}
+                            size="icon"
+                        >
+                            <MessageCircle className="h-6 w-6" />
+                        </Button>
+                    )}
+                </SheetTrigger>
+                <SheetContent
+                    side="right"
+                    className={`p-0 gap-0 [&>button]:hidden rounded-l-3xl overflow-hidden ${(isResizing) ? 'transition-none' : 'transition-all duration-300 ease-in-out'}`}
+                    style={{ width: `${width}px`, maxWidth: `${maxWidth}px` }}
+                    onInteractOutside={(e) => e.preventDefault()}
+                >
+                    {/* Resize Handle */}
+                    <div
+                        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/20 transition-colors z-50"
+                        onMouseDown={startResizing}
+                    />
 
-                <div className="flex flex-col h-full">
-                    {/* Header */}
-                    <SheetHeader className="px-6 py-4 border-b flex-shrink-0">
-                        <SheetTitle className="sr-only">AI Chat Assistant</SheetTitle>
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="relative">
-                                    <Avatar className="h-10 w-10">
-                                        <AvatarImage src="/bot-avatar.png" />
-                                        <AvatarFallback className="bg-primary text-primary-foreground">
-                                            <Bot className="h-5 w-5" />
-                                        </AvatarFallback>
-                                    </Avatar>
-                                    <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                    <div className="flex flex-col h-full">
+                        {/* Header */}
+                        <SheetHeader className="px-6 py-4 border-b flex-shrink-0">
+                            <SheetTitle className="sr-only">AI Chat Assistant</SheetTitle>
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="relative">
+                                        <Avatar className="h-10 w-10">
+                                            <AvatarImage src="/bot-avatar.png" />
+                                            <AvatarFallback className="bg-primary text-primary-foreground">
+                                                <Bot className="h-5 w-5" />
+                                            </AvatarFallback>
+                                        </Avatar>
+                                        <div className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-background" />
+                                    </div>
+                                    <div>
+                                        <h3 className="font-semibold text-lg">Toother AI</h3>
+                                        <p className="text-xs text-muted-foreground">Always here to help</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="font-semibold text-lg">Toother AI</h3>
-                                    <p className="text-xs text-muted-foreground">Always here to help</p>
-                                </div>
-                            </div>
 
-                            <div className="flex items-center gap-2">
-                                {/* Chat History Dropdown - only for authenticated users */}
-                                {user && (
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="ghost" size="icon">
-                                                <ChevronDown className="h-5 w-5" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" className="w-64">
-                                            <DropdownMenuLabel>Chat History</DropdownMenuLabel>
-                                            <DropdownMenuSeparator />
-                                            {conversations.length === 0 ? (
-                                                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                                                    No chat history yet
-                                                </div>
-                                            ) : (
-                                                conversations.map((conv) => (
-                                                    <DropdownMenuItem
-                                                        key={conv.id}
-                                                        onClick={() => loadConversation(conv.id)}
-                                                        className={`group flex items-start justify-between gap-2 cursor-pointer ${
-                                                            currentConversationId === conv.id 
-                                                                ? 'bg-primary/10 border-l-2 border-primary' 
-                                                                : ''
-                                                        }`}
-                                                    >
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className={`font-medium truncate text-sm ${
-                                                                currentConversationId === conv.id ? 'text-primary' : ''
-                                                            }`}>
-                                                                {conv.title}
-                                                            </div>
-                                                            <div className="text-xs text-muted-foreground">
-                                                                {conv.updated_at}
-                                                            </div>
-                                                        </div>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:text-destructive"
-                                                            onClick={(e) => handleDeleteConversation(conv.id, e)}
+                                <div className="flex items-center gap-2">
+                                    {/* Chat History Dropdown - only for authenticated users */}
+                                    {user && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon">
+                                                    <ChevronDown className="h-5 w-5" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-64">
+                                                <DropdownMenuLabel>Chat History</DropdownMenuLabel>
+                                                <DropdownMenuSeparator />
+                                                {conversations.length === 0 ? (
+                                                    <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                                                        No chat history yet
+                                                    </div>
+                                                ) : (
+                                                    conversations.map((conv) => (
+                                                        <DropdownMenuItem
+                                                            key={conv.id}
+                                                            onClick={() => loadConversation(conv.id)}
+                                                            className={`group flex items-start justify-between gap-2 cursor-pointer ${currentConversationId === conv.id
+                                                                    ? 'bg-primary/10 border-l-2 border-primary'
+                                                                    : ''
+                                                                }`}
                                                         >
-                                                            <Trash2 className="h-3 w-3" />
-                                                        </Button>
-                                                    </DropdownMenuItem>
-                                                ))
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
-                                )}
+                                                            <div className="flex-1 min-w-0">
+                                                                <div className={`font-medium truncate text-sm ${currentConversationId === conv.id ? 'text-primary' : ''
+                                                                    }`}>
+                                                                    {conv.title}
+                                                                </div>
+                                                                <div className="text-xs text-muted-foreground">
+                                                                    {conv.updated_at}
+                                                                </div>
+                                                            </div>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-6 w-6 opacity-0 group-hover:opacity-100 hover:text-destructive"
+                                                                onClick={(e) => handleDeleteConversation(conv.id, e)}
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </Button>
+                                                        </DropdownMenuItem>
+                                                    ))
+                                                )}
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
 
-                                {/* New Chat Button - only for authenticated users */}
-                                {user && (
-                                    <Button variant="ghost" size="icon" onClick={handleNewChat}>
-                                        <Plus className="h-5 w-5" />
+                                    {/* New Chat Button - only for authenticated users */}
+                                    {user && (
+                                        <Button variant="ghost" size="icon" onClick={handleNewChat}>
+                                            <Plus className="h-5 w-5" />
+                                        </Button>
+                                    )}
+
+                                    {/* Close Button */}
+                                    <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
+                                        <PanelRightClose className="h-5 w-5" />
                                     </Button>
-                                )}
-
-                                {/* Close Button */}
-                                <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
-                                    <PanelRightClose className="h-5 w-5" />
-                                </Button>
+                                </div>
                             </div>
-                        </div>
-                    </SheetHeader>
+                        </SheetHeader>
 
-                    {/* Messages or Welcome Screen */}
-                    <div className="flex-1 overflow-hidden relative w-full">
-                        <ScrollArea ref={scrollAreaRef} className="h-full w-full px-6 py-4">
-                            {isHistoryLoading ? (
-                                <div className="flex flex-col items-center justify-center h-full py-10 space-y-4">
-                                     <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                                     <p className="text-sm text-muted-foreground">Loading history...</p>
-                                </div>
-                            ) : messages.length === 0 ? (
-                                /* Welcome Screen */
-                                <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
-                                    <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
-                                        <Bot className="h-7 w-7 text-primary" />
+                        {/* Messages or Welcome Screen */}
+                        <div className="flex-1 overflow-hidden relative w-full">
+                            <ScrollArea ref={scrollAreaRef} className="h-full w-full px-6 py-4">
+                                {isHistoryLoading ? (
+                                    <div className="flex flex-col items-center justify-center h-full py-10 space-y-4">
+                                        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                                        <p className="text-sm text-muted-foreground">Loading history...</p>
                                     </div>
-                                    <h2 className="text-xl font-semibold mb-1">
-                                        Hi {user?.name?.split(' ')[0] || 'there'},
-                                    </h2>
-                                    <p className="text-2xl font-bold mb-3">Welcome back! How can I help?</p>
-                                    <p className="text-sm text-muted-foreground mb-8 max-w-sm">
-                                        I'm here to help you with appointments, treatments, and clinic info. Choose an action or just ask me anything!
-                                    </p>
-                                    <div className="flex flex-wrap justify-center gap-2 max-w-md">
-                                        {suggestions.map((suggestion, i) => (
-                                            <Button
-                                                key={i}
-                                                variant="outline"
-                                                size="sm"
-                                                className="rounded-full text-xs px-4 py-2 h-auto border-muted-foreground/20 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
-                                                onClick={() => handleSendMessage(suggestion)}
+                                ) : messages.length === 0 ? (
+                                    /* Welcome Screen */
+                                    <div className="flex flex-col items-center justify-center h-full text-center px-4 py-8">
+                                        <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-6">
+                                            <Bot className="h-7 w-7 text-primary" />
+                                        </div>
+                                        <h2 className="text-xl font-semibold mb-1">
+                                            Hi {user?.name?.split(' ')[0] || 'there'},
+                                        </h2>
+                                        <p className="text-2xl font-bold mb-3">Welcome back! How can I help?</p>
+                                        <p className="text-sm text-muted-foreground mb-8 max-w-sm">
+                                            I'm here to help you with appointments, treatments, and clinic info. Choose an action or just ask me anything!
+                                        </p>
+                                        <div className="flex flex-wrap justify-center gap-2 max-w-md">
+                                            {suggestions.map((suggestion, i) => (
+                                                <Button
+                                                    key={i}
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="rounded-full text-xs px-4 py-2 h-auto border-muted-foreground/20 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+                                                    onClick={() => handleSendMessage(suggestion)}
+                                                >
+                                                    {suggestion}
+                                                </Button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    /* Chat Messages */
+                                    <div className="space-y-4 pb-4 w-full overflow-hidden">
+                                        {messages.map((message) => (
+                                            <div
+                                                key={message.id}
+                                                className={`flex gap-3 w-full overflow-hidden ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                                             >
-                                                {suggestion}
-                                            </Button>
+                                                {message.role === 'assistant' && (
+                                                    <Avatar className="h-8 w-8 flex-shrink-0">
+                                                        <AvatarFallback className="bg-primary text-primary-foreground">
+                                                            <Bot className="h-4 w-4" />
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                                <div
+                                                    className={`rounded-2xl px-4 py-2 max-w-[80%] overflow-x-auto ${message.role === 'user'
+                                                            ? 'bg-primary text-primary-foreground'
+                                                            : 'bg-muted'
+                                                        }`}
+                                                >
+                                                    {message.isAnimated ? (
+                                                        <AnimatedMessage
+                                                            text={message.content}
+                                                            maxTableWidth={Math.floor(width * 0.8 - 80)}
+                                                            onQuestionClick={handleSendMessage}
+                                                            onQuestionFill={setQuery}
+                                                            onAnimationComplete={() => handleAnimationComplete(message.id)}
+                                                        />
+                                                    ) : (
+                                                        <div className="text-sm whitespace-pre-wrap break-words">{formatMessage(message.content, Math.floor(width * 0.8 - 80), handleSendMessage, setQuery)}</div>
+                                                    )}
+                                                </div>
+                                                {message.role === 'user' && (
+                                                    <Avatar className="h-8 w-8 flex-shrink-0">
+                                                        <AvatarImage src={user?.avatar_url || user?.avatar} alt={user?.name} />
+                                                        <AvatarFallback>
+                                                            <User className="h-4 w-4" />
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                )}
+                                            </div>
                                         ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                /* Chat Messages */
-                                <div className="space-y-4 pb-4 w-full overflow-hidden">
-                                    {messages.map((message) => (
-                                        <div
-                                            key={message.id}
-                                            className={`flex gap-3 w-full overflow-hidden ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                                        >
-                                            {message.role === 'assistant' && (
-                                                <Avatar className="h-8 w-8 flex-shrink-0">
+                                        {isLoading && (
+                                            <div className="flex gap-3">
+                                                <Avatar className="h-8 w-8">
                                                     <AvatarFallback className="bg-primary text-primary-foreground">
                                                         <Bot className="h-4 w-4" />
                                                     </AvatarFallback>
                                                 </Avatar>
-                                            )}
-                                            <div
-                                                className={`rounded-2xl px-4 py-2 max-w-[80%] overflow-x-auto ${
-                                                    message.role === 'user'
-                                                        ? 'bg-primary text-primary-foreground'
-                                                        : 'bg-muted'
-                                                }`}
-                                            >
-                                                {message.isAnimated ? (
-                                                    <AnimatedMessage 
-                                                        text={message.content} 
-                                                        maxTableWidth={Math.floor(width * 0.8 - 80)} 
-                                                        onQuestionClick={handleSendMessage} 
-                                                        onQuestionFill={setQuery} 
-                                                        onAnimationComplete={() => handleAnimationComplete(message.id)} 
-                                                    />
-                                                ) : (
-                                                    <div className="text-sm whitespace-pre-wrap break-words">{formatMessage(message.content, Math.floor(width * 0.8 - 80), handleSendMessage, setQuery)}</div>
-                                                )}
+                                                <ThinkingAnimation />
                                             </div>
-                                            {message.role === 'user' && (
-                                                <Avatar className="h-8 w-8 flex-shrink-0">
-                                                    <AvatarImage src={user?.avatar_url || user?.avatar} alt={user?.name} />
-                                                    <AvatarFallback>
-                                                        <User className="h-4 w-4" />
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                            )}
-                                        </div>
+                                        )}
+                                    </div>
+                                )}
+                            </ScrollArea>
+                        </div>
+
+                        <div className="px-4 pt-4 pb-8 bg-transparent space-y-4 relative z-10">
+                            {/* Suggested prompts for guests (shown above input when there are messages) */}
+                            {!user && messages.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {suggestions.map((suggestion, i) => (
+                                        <Button
+                                            key={i}
+                                            variant="outline"
+                                            size="sm"
+                                            className="rounded-full text-xs px-4 py-2 h-auto border-muted-foreground/20 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
+                                            onClick={() => handleSendMessage(suggestion)}
+                                            disabled={isLoading}
+                                        >
+                                            {suggestion}
+                                        </Button>
                                     ))}
-                                    {isLoading && (
-                                        <div className="flex gap-3">
-                                            <Avatar className="h-8 w-8">
-                                                <AvatarFallback className="bg-primary text-primary-foreground">
-                                                    <Bot className="h-4 w-4" />
-                                                </AvatarFallback>
-                                            </Avatar>
-                                            <ThinkingAnimation />
-                                        </div>
-                                    )}
                                 </div>
                             )}
-                        </ScrollArea>
-                    </div>
 
-                    <div className="px-4 pt-4 pb-8 bg-transparent space-y-4 relative z-10">
-                        {/* Suggested prompts for guests (shown above input when there are messages) */}
-                        {!user && messages.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                                {suggestions.map((suggestion, i) => (
+                            <form onSubmit={handleFormSubmit} className="flex gap-2">
+                                <Input
+                                    value={query}
+                                    onChange={(e) => setQuery(e.target.value)}
+                                    placeholder="Ask me anything..."
+                                    className="flex-1"
+                                    disabled={isLoading}
+                                />
+                                {isLoading ? (
                                     <Button
-                                        key={i}
-                                        variant="outline"
-                                        size="sm"
-                                        className="rounded-full text-xs px-4 py-2 h-auto border-muted-foreground/20 hover:bg-primary/10 hover:text-primary hover:border-primary/30 transition-colors"
-                                        onClick={() => handleSendMessage(suggestion)}
-                                        disabled={isLoading}
+                                        type="button"
+                                        size="icon"
+                                        variant="destructive"
+                                        onClick={handleCancelRequest}
+                                        title="Cancel request"
                                     >
-                                        {suggestion}
+                                        <X className="h-4 w-4" />
                                     </Button>
-                                ))}
-                            </div>
-                        )}
-
-                        <form onSubmit={handleFormSubmit} className="flex gap-2">
-                            <Input
-                                value={query}
-                                onChange={(e) => setQuery(e.target.value)}
-                                placeholder="Ask me anything..."
-                                className="flex-1"
-                                disabled={isLoading}
-                            />
-                            {isLoading ? (
-                                <Button 
-                                    type="button" 
-                                    size="icon" 
-                                    variant="destructive"
-                                    onClick={handleCancelRequest}
-                                    title="Cancel request"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            ) : (
-                                <Button type="submit" size="icon" disabled={!query.trim()}>
-                                    <Send className="h-4 w-4" />
-                                </Button>
-                            )}
-                        </form>
+                                ) : (
+                                    <Button type="submit" size="icon" disabled={!query.trim()}>
+                                        <Send className="h-4 w-4" />
+                                    </Button>
+                                )}
+                            </form>
+                        </div>
                     </div>
-                </div>
-            </SheetContent>
-        </Sheet>
+                </SheetContent>
+            </Sheet>
 
             {/* Delete Confirmation Dialog */}
             <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>

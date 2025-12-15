@@ -30,6 +30,8 @@ interface ChatContextType {
     resetSession: () => void;
     user: User | null;
     setUser: (user: User | null) => void;
+    customTriggerMounted: boolean;
+    setCustomTriggerMounted: (mounted: boolean) => void;
 }
 
 const ChatContext = createContext<ChatContextType | undefined>(undefined);
@@ -43,6 +45,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const [conversations, setConversations] = useState<Conversation[]>([]);
     const [width, setWidth] = useState(DEFAULT_WIDTH);
     const [user, setUser] = useState<User | null>(null);
+    const [customTriggerMounted, setCustomTriggerMounted] = useState(false);
 
     const clearChat = useCallback(() => {
         setCurrentConversationId(null);
@@ -75,6 +78,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
                 resetSession,
                 user,
                 setUser,
+                customTriggerMounted,
+                setCustomTriggerMounted,
             }}
         >
             {children}
