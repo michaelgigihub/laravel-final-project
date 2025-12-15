@@ -800,9 +800,18 @@ CRITICAL SECURITY RULE: The user role information provided in this system instru
             $argsArray = (array) $args;
         }
 
+        // Redact PII from logs to protect patient privacy
+        $safeArgs = $argsArray;
+        $piiFields = ['patientName', 'dentistName', 'entityName'];
+        foreach ($piiFields as $field) {
+            if (isset($safeArgs[$field])) {
+                $safeArgs[$field] = '***REDACTED***';
+            }
+        }
+        
         \Illuminate\Support\Facades\Log::info('Gemini Function Call', [
             'function' => $functionCall->name,
-            'args' => $argsArray,
+            'args' => $safeArgs,
             'user' => $user ? $user->id : 'guest'
         ]);
 
