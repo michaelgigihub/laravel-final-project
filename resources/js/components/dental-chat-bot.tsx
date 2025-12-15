@@ -680,7 +680,7 @@ export function DentalChatBot() {
             </SheetTrigger>
             <SheetContent
                 side="right"
-                className={`p-0 gap-0 [&>button]:hidden ${(isResizing) ? 'transition-none' : 'transition-all duration-300 ease-in-out'}`}
+                className={`p-0 gap-0 [&>button]:hidden rounded-l-3xl overflow-hidden ${(isResizing) ? 'transition-none' : 'transition-all duration-300 ease-in-out'}`}
                 style={{ width: `${width}px`, maxWidth: `${maxWidth}px` }}
                 onInteractOutside={(e) => e.preventDefault()}
             >

@@ -37,7 +37,31 @@ Route::post('/api/chat/guest', [ChatController::class, 'sendGuestMessage'])
     ->name('chat.guest');
 
 Route::get('/', function () {
-    return Inertia::render('welcome');
+    $treatmentTypes = \App\Models\TreatmentType::query()
+        ->where('is_active', true)
+        ->orderBy('name')
+        ->get(['id', 'name', 'description', 'standard_cost', 'duration_minutes']);
+
+    $dentists = \App\Models\User::dentists()
+        ->with(['specializations', 'dentistProfile'])
+        ->whereHas('dentistProfile', fn ($q) => $q->whereIn('employment_status', ['active', 'Active']))
+        ->get()
+        ->map(fn ($d) => [
+            'id' => $d->id,
+            'name' => $d->name,
+            'avatar_url' => $d->avatar_url,
+            'specializations' => $d->specializations->pluck('name')->toArray(),
+            'experience_label' => $d->dentistProfile?->hire_date
+                ? $d->dentistProfile->hire_date->diffForHumans(null, \Carbon\CarbonInterface::DIFF_ABSOLUTE, false, 1) . ' of Experience'
+                : 'Experienced Dentist',
+        ])
+        ->values()
+        ->toArray();
+
+    return Inertia::render('welcome', [
+        'treatmentTypes' => $treatmentTypes,
+        'dentists' => $dentists,
+    ]);
 })->name('home');
 
 // Password change routes (accessible even when must_change_password is true)
