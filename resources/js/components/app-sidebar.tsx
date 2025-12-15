@@ -35,6 +35,7 @@ import {
     Tag,
     Users,
 } from 'lucide-react';
+import { Bone } from 'lucide-react';
 import AppLogo from './app-logo';
 import { useAppearance } from '@/hooks/use-appearance';
 
@@ -58,6 +59,11 @@ const servicesSubItems: ServiceSubItem[] = [
         title: 'Treatment Types',
         href: '/admin/treatment-types',
         icon: Syringe,
+    },
+    {
+        title: 'Teeth Config',
+        href: '/admin/teeth',
+        icon: Bone,
     },
 ];
 

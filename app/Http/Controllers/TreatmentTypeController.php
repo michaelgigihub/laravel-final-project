@@ -56,26 +56,54 @@ class TreatmentTypeController extends Controller
 
     public function update(Request $request, TreatmentType $treatmentType)
     {
-        $validated = $request->validate([
-            'is_active' => 'required|boolean',
-        ]);
+        // Check if this is a simple status toggle or a full update
+        if ($request->has('name')) {
+            // Full update
+            $validated = $request->validate([
+                'name' => ['required', 'string', 'max:255'],
+                'description' => 'required|string|max:1000',
+                'standard_cost' => 'required|numeric|min:0|max:999999.99',
+                'is_per_tooth' => 'boolean',
+                'duration_minutes' => 'required|integer|min:1|max:480',
+                'is_active' => 'boolean',
+            ]);
 
-        $oldStatus = $treatmentType->is_active;
-        $treatmentType->update($validated);
+            $validated['name'] = ucwords($validated['name']);
+            $oldValues = $treatmentType->only(['name', 'description', 'standard_cost', 'is_per_tooth', 'duration_minutes', 'is_active']);
+            $treatmentType->update($validated);
 
-        // Audit log
-        $this->auditService->log(
-            adminId: Auth::id(),
-            activityTitle: 'Treatment Type Updated',
-            message: "Updated treatment type '{$treatmentType->name}' status",
-            moduleType: AuditModuleType::SERVICES_MANAGEMENT,
-            targetType: AuditTargetType::TREATMENT_TYPE,
-            targetId: $treatmentType->id,
-            oldValue: ['is_active' => $oldStatus],
-            newValue: ['is_active' => $validated['is_active']]
-        );
+            $this->auditService->log(
+                adminId: Auth::id(),
+                activityTitle: 'Treatment Type Updated',
+                message: "Updated treatment type '{$treatmentType->name}'",
+                moduleType: AuditModuleType::SERVICES_MANAGEMENT,
+                targetType: AuditTargetType::TREATMENT_TYPE,
+                targetId: $treatmentType->id,
+                oldValue: $oldValues,
+                newValue: $validated
+            );
+        } else {
+            // Status toggle only
+            $validated = $request->validate([
+                'is_active' => 'required|boolean',
+            ]);
 
-        return back()->with('success', 'Treatment status updated successfully!');
+            $oldStatus = $treatmentType->is_active;
+            $treatmentType->update($validated);
+
+            $this->auditService->log(
+                adminId: Auth::id(),
+                activityTitle: 'Treatment Type Updated',
+                message: "Updated treatment type '{$treatmentType->name}' status",
+                moduleType: AuditModuleType::SERVICES_MANAGEMENT,
+                targetType: AuditTargetType::TREATMENT_TYPE,
+                targetId: $treatmentType->id,
+                oldValue: ['is_active' => $oldStatus],
+                newValue: ['is_active' => $validated['is_active']]
+            );
+        }
+
+        return back()->with('success', 'Treatment type updated successfully!');
     }
 
     public function destroy(TreatmentType $treatmentType)

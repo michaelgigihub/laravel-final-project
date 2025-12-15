@@ -54,6 +54,7 @@ export interface TreatmentType {
     name: string;
     description: string;
     standard_cost: string;
+    is_per_tooth: boolean;
     duration_minutes: number;
     is_active: number; // boolean in DB, but might be number if not cast
     created_at?: string;

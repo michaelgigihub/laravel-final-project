@@ -12,8 +12,15 @@ class TreatmentType extends Model
         'name',
         'description',
         'standard_cost',
+        'is_per_tooth',
         'duration_minutes',
         'is_active',
+    ];
+
+    protected $casts = [
+        'standard_cost' => 'decimal:2',
+        'is_per_tooth' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     public function appointments()
@@ -26,3 +33,4 @@ class TreatmentType extends Model
         );
     }
 }
+

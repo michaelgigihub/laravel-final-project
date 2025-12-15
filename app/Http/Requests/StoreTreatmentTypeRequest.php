@@ -36,6 +36,7 @@ class StoreTreatmentTypeRequest extends FormRequest
             ],
             'description' => 'required|string|max:1000',
             'standard_cost' => 'required|numeric|min:0|max:999999.99',
+            'is_per_tooth' => 'boolean',
             'duration_minutes' => 'required|integer|min:1|max:480',
             'is_active' => 'boolean',
         ];

@@ -229,6 +229,7 @@ export default function TreatmentTypesTable({
             name: '',
             description: '',
             standard_cost: '',
+            is_per_tooth: false,
             duration_minutes: '',
             is_active: true,
         });
@@ -246,6 +247,7 @@ export default function TreatmentTypesTable({
             name: treatment.name,
             description: treatment.description,
             standard_cost: String(treatment.standard_cost),
+            is_per_tooth: !!treatment.is_per_tooth,
             duration_minutes: String(treatment.duration_minutes),
             is_active: !!treatment.is_active,
         });
@@ -301,7 +303,17 @@ export default function TreatmentTypesTable({
                     currency: 'PHP',
                     currencyDisplay: 'symbol',
                 }).format(amount);
-                return <div className="font-medium">{formatted}</div>;
+                const isPerTooth = row.original.is_per_tooth;
+                return (
+                    <div className="font-medium">
+                        {formatted}
+                        {isPerTooth && (
+                            <span className="ml-1 text-xs text-muted-foreground">
+                                /tooth
+                            </span>
+                        )}
+                    </div>
+                );
             },
         },
         {
@@ -549,6 +561,30 @@ export default function TreatmentTypesTable({
                                                     ]}
                                                 />
                                             </Field>
+                                        </div>
+
+                                        {/* Per-Tooth Pricing Checkbox */}
+                                        <div className="flex items-start space-x-3 rounded-lg border p-4">
+                                            <input
+                                                type="checkbox"
+                                                id="is_per_tooth"
+                                                checked={data.is_per_tooth}
+                                                onChange={(e) =>
+                                                    setData('is_per_tooth', e.target.checked)
+                                                }
+                                                className="mt-1 h-4 w-4 rounded border-gray-300"
+                                            />
+                                            <div className="space-y-1">
+                                                <label
+                                                    htmlFor="is_per_tooth"
+                                                    className="text-sm font-medium cursor-pointer"
+                                                >
+                                                    Price per tooth
+                                                </label>
+                                                <p className="text-xs text-muted-foreground">
+                                                    Enable this for treatments like fillings, extractions, or crowns where the cost is multiplied by the number of teeth treated.
+                                                </p>
+                                            </div>
                                         </div>
                                     </FieldGroup>
                                 </div>
