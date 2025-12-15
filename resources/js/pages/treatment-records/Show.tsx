@@ -397,7 +397,7 @@ export default function ShowTreatmentRecord({
                                                 htmlFor={`tooth-${tooth.id}`}
                                                 className="cursor-pointer text-xs font-medium"
                                             >
-                                                {tooth.name}
+                                                {tooth.id}. {tooth.name}
                                             </label>
                                         </div>
                                     ))}
@@ -413,7 +413,7 @@ export default function ShowTreatmentRecord({
                                                         key={tooth.id}
                                                         variant="secondary"
                                                     >
-                                                        {tooth.name}
+                                                        {tooth.id}. {tooth.name}
                                                     </Badge>
                                                 ),
                                             )}

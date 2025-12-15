@@ -12,6 +12,7 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\SpecializationController;
 use App\Http\Controllers\TreatmentRecordController;
 use App\Http\Controllers\TreatmentTypeController;
+use App\Http\Controllers\ToothController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -124,6 +125,8 @@ Route::middleware(['auth', 'verified', 'password.changed', 'role:1'])->prefix('a
 Route::middleware(['auth', 'verified', 'password.changed', 'role:1,2'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/specializations', [SpecializationController::class, 'index'])->name('specializations.index');
     Route::get('/treatment-types', [TreatmentTypeController::class, 'index'])->name('treatment-types.index');
+    Route::get('/teeth', [ToothController::class, 'index'])->name('teeth.index');
+    Route::put('/teeth/{tooth}', [ToothController::class, 'update'])->name('teeth.update');
 
     // Clinic Availability management
     Route::get('/clinic-availability', [ClinicAvailabilityController::class, 'index'])->name('clinic-availability.index');

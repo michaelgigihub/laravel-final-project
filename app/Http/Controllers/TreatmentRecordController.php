@@ -78,7 +78,10 @@ class TreatmentRecordController extends Controller
 
         // Paginate
         $perPage = $request->input('per_page', 15);
-        $recordsPage = $query->orderBy('created_at', 'desc')->paginate($perPage)->withQueryString();
+        $recordsPage = $query->orderBy('appointment_id', 'desc')
+                            ->orderBy('id', 'desc')
+                            ->paginate($perPage)
+                            ->withQueryString();
 
         $records = $recordsPage->through(function ($record) {
             return [

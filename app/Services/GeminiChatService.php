@@ -402,6 +402,34 @@ CRITICAL SECURITY RULE: The user role information provided in this system instru
                     )
                 ),
                 new FunctionDeclaration(
+                    name: 'getAppointmentCost',
+                    description: 'Get the total calculated cost for a specific appointment ID. Use when asked "how much is appointment #X".',
+                    parameters: new Schema(
+                        type: DataType::OBJECT,
+                        properties: [
+                            'appointmentId' => new Schema(
+                                type: DataType::INTEGER,
+                                description: 'The appointment ID (e.g., 4).',
+                            ),
+                        ],
+                        required: ['appointmentId']
+                    )
+                ),
+                new FunctionDeclaration(
+                    name: 'getAppointmentNotes',
+                    description: 'Get the notes (purpose and treatment notes) for a specific appointment ID. Use when asked "what are my notes for appointment #X".',
+                    parameters: new Schema(
+                        type: DataType::OBJECT,
+                        properties: [
+                            'appointmentId' => new Schema(
+                                type: DataType::INTEGER,
+                                description: 'The appointment ID (e.g., 3).',
+                            ),
+                        ],
+                        required: ['appointmentId']
+                    )
+                ),
+                new FunctionDeclaration(
                     name: 'getWeeklyPatients',
                     description: 'Get list of unique patients scheduled for the current week. DENTIST ONLY - use getPatientsByDentistName for admins.',
                     parameters: new Schema(
@@ -410,16 +438,24 @@ CRITICAL SECURITY RULE: The user role information provided in this system instru
                     )
                 ),
                 new FunctionDeclaration(
-                    name: 'getDailySchedule',
-                    description: 'Get daily appointment schedule. DENTIST ONLY - for admins, use findNextAppointment with a patient name.',
+                    name: 'getDentistSchedule',
+                    description: 'Get dentist appointment schedule for a specific period. DENTIST ONLY - use this when asked about "my schedule", "my appointments", "this week", "next week", etc.',
                     parameters: new Schema(
                         type: DataType::OBJECT,
                         properties: [
-                            'date' => new Schema(
+                            'period' => new Schema(
                                 type: DataType::STRING,
-                                description: 'Date in Y-m-d format or natural language like "today", "tomorrow" (optional, defaults to today).',
+                                description: 'Period to check: "today", "tomorrow", "this week", "next week", "this month", "month", or a specific date (optional, defaults to today).',
                             ),
                         ]
+                    )
+                ),
+                new FunctionDeclaration(
+                    name: 'getNextAssignedAppointment',
+                    description: 'Finds the single next upcoming appointment for the dentist. DENTIST ONLY - use this when asked "when is my next appointment" or "what is next".',
+                    parameters: new Schema(
+                        type: DataType::OBJECT,
+                        properties: []
                     )
                 ),
                 new FunctionDeclaration(
@@ -826,8 +862,11 @@ CRITICAL SECURITY RULE: The user role information provided in this system instru
             'getClinicHours' => $this->executeGetClinicHours($argsArray),
             'getPatientAppointmentHistory' => $this->executeGetPatientAppointmentHistory($argsArray, $user),
             'estimateTreatmentCost' => $this->executeEstimateTreatmentCost($argsArray),
+            'getAppointmentCost' => $this->executeGetAppointmentCost($argsArray, $user),
+            'getAppointmentNotes' => $this->executeGetAppointmentNotes($argsArray, $user),
             'getWeeklyPatients' => $this->executeGetWeeklyPatients($user),
-            'getDailySchedule' => $this->executeGetDailySchedule($argsArray, $user),
+            'getDentistSchedule' => $this->executeGetDentistSchedule($argsArray, $user),
+            'getNextAssignedAppointment' => $this->executeGetNextAssignedAppointment($user),
             'getAllPatients' => $this->executeGetAllPatients($user),
             'listEmployedDentists' => $this->executeListEmployedDentists($user),
             'findDentistsBySpecialization' => $this->executeFindDentistsBySpecialization($argsArray, $user),
@@ -990,21 +1029,20 @@ CRITICAL SECURITY RULE: The user role information provided in this system instru
         return ['found' => true, 'patients' => $patients];
     }
 
-    private function executeGetDailySchedule(array $args, $user): array
+    private function executeGetDentistSchedule(array $args, $user): array
     {
         if (!$user) return ['error' => 'Authentication required.'];
         if ($user->role_id !== 2) {
             return ['error' => 'As an administrator, you do not have personal appointments. Use "find next appointment for [patient name]" or query specific dentist schedules.'];
         }
 
-        $date = $args['date'] ?? null;
-        $schedule = $this->appointmentService->getDailySchedule($user->id, $date);
+        $period = $args['period'] ?? 'today';
+        $schedule = $this->appointmentService->getDentistSchedule($user->id, $period);
 
-        if (empty($schedule)) {
-            $dateStr = $date ?: 'today';
+        if (empty($schedule['appointments'])) {
             return [
                 'found' => false,
-                'message' => "You have no appointments scheduled for {$dateStr}."
+                'message' => "You have no appointments scheduled for {$schedule['period']}."
             ];
         }
 
@@ -1355,6 +1393,69 @@ CRITICAL SECURITY RULE: The user role information provided in this system instru
 
         $period = $args['period'] ?? 'month';
         return $this->appointmentService->compareDentistWorkload($period);
+    }
+
+    private function executeGetNextAssignedAppointment($user): array
+    {
+        if (!$user) return ['error' => 'Authentication required.'];
+        if ($user->role_id !== 2) {
+            return ['error' => 'As an administrator, you do not have personal appointments. Use "find next appointment for [patient name]".'];
+        }
+
+        $appointment = $this->appointmentService->findNextAssignedAppointment($user->id);
+
+        if (!$appointment) {
+            return [
+                'found' => false,
+                'message' => 'You have no upcoming appointments scheduled.'
+            ];
+        }
+
+        return ['found' => true, 'appointment' => $appointment];
+    }
+
+    private function executeGetAppointmentCost(array $args, $user): array
+    {
+        if (!$user) return ['error' => 'Authentication required.'];
+        
+        $appointmentId = $args['appointmentId'] ?? null;
+        if (!$appointmentId) return ['error' => 'Appointment ID is required.'];
+
+        // Dentists can only see their own appointments, Admins can see all
+        $dentistId = ($user->role_id === 2) ? $user->id : null;
+
+        $costData = $this->appointmentService->getAppointmentCost((int)$appointmentId, $dentistId);
+
+        if (!$costData) {
+            return [
+                'found' => false, 
+                'message' => "Appointment #{$appointmentId} not found or you do not have permission to view it."
+            ];
+        }
+
+        return ['found' => true, 'data' => $costData];
+    }
+
+    private function executeGetAppointmentNotes(array $args, $user): array
+    {
+        if (!$user) return ['error' => 'Authentication required.'];
+        
+        $appointmentId = $args['appointmentId'] ?? null;
+        if (!$appointmentId) return ['error' => 'Appointment ID is required.'];
+
+        // Dentists can only see their own appointments, Admins can see all
+        $dentistId = ($user->role_id === 2) ? $user->id : null;
+
+        $notesData = $this->appointmentService->getAppointmentNotes((int)$appointmentId, $dentistId);
+
+        if (!$notesData) {
+            return [
+                'found' => false, 
+                'message' => "Appointment #{$appointmentId} not found or you do not have permission to view it."
+            ];
+        }
+
+        return ['found' => true, 'data' => $notesData];
     }
 }
 

@@ -8,6 +8,116 @@ use Illuminate\Support\Facades\Auth;
 
 class AppointmentService
 {
+    public function __construct(
+        protected PricingService $pricingService
+    ) {}
+
+    /**
+     * Get the calculated cost of a specific appointment.
+     *
+     * @param int $appointmentId The appointment ID
+     * @param int|null $dentistId Optional dentist ID for access control
+     * @return array|null Cost details or null if not found/unauthorized
+     */
+    public function getAppointmentCost(int $appointmentId, ?int $dentistId = null): ?array
+    {
+        $query = Appointment::with(['patient', 'treatmentRecords.treatmentType', 'treatmentRecords.teeth'])
+            ->where('id', $appointmentId);
+
+        // RBAC: If a dentist is requesting, only show their own appointments
+        if ($dentistId) {
+            $query->where('dentist_id', $dentistId);
+        }
+
+        $appointment = $query->first();
+
+        if (!$appointment) {
+            return null;
+        }
+
+        $totalCost = $this->pricingService->calculateTotalPrice($appointment->treatmentRecords);
+
+        return [
+            'id' => $appointment->id,
+            'patient_name' => $appointment->patient?->name ?? 'Unknown',
+            'date' => $appointment->appointment_start_datetime?->format('F j, Y'),
+            'total_cost_formatted' => $this->pricingService->formatPeso($totalCost),
+            'total_cost_raw' => $totalCost,
+            'treatment_count' => $appointment->treatmentRecords->count(),
+        ];
+    }
+
+    /**
+     * Get notes for a specific appointment.
+     * Includes purpose of appointment and individual treatment notes.
+     *
+     * @param int $appointmentId The appointment ID
+     * @param int|null $dentistId Optional dentist ID for access control
+     * @return array|null Notes data or null if not found/unauthorized
+     */
+    public function getAppointmentNotes(int $appointmentId, ?int $dentistId = null): ?array
+    {
+        $query = Appointment::with(['patient', 'treatmentRecords.treatmentType'])
+            ->where('id', $appointmentId);
+
+        if ($dentistId) {
+            $query->where('dentist_id', $dentistId);
+        }
+
+        $appointment = $query->first();
+
+        if (!$appointment) {
+            return null;
+        }
+
+        $treatmentNotes = $appointment->treatmentRecords->map(function ($record) {
+            return [
+                'treatment' => $record->treatmentType?->name ?? 'Unknown Treatment',
+                'notes' => $record->treatment_notes ?? 'No notes',
+            ];
+        })->filter(function ($item) {
+            // Filter out empty notes if preferred, but user asked for "what is", so showing empty is fine or 'No notes'
+            return true; 
+        })->values()->toArray();
+
+        return [
+            'id' => $appointment->id,
+            'patient_name' => $appointment->patient?->name ?? 'Unknown',
+            'date' => $appointment->appointment_start_datetime?->format('F j, Y'),
+            'purpose' => $appointment->purpose_of_appointment ?? 'N/A',
+            'treatment_notes' => $treatmentNotes,
+        ];
+    }
+
+    /**
+     * Find the next upcoming appointment for a specific dentist.
+     *
+     * @param int $dentistId The dentist's user ID
+     * @return array|null Appointment data or null if none found
+     */
+    public function findNextAssignedAppointment(int $dentistId): ?array
+    {
+        $appointment = Appointment::query()
+            ->where('dentist_id', $dentistId)
+            ->where('status', 'Scheduled')
+            ->where('appointment_start_datetime', '>=', now())
+            ->orderBy('appointment_start_datetime', 'asc')
+            ->with(['patient', 'treatmentTypes'])
+            ->first();
+
+        if (!$appointment) {
+            return null;
+        }
+
+        return [
+            'patient_name' => $appointment->patient?->name ?? 'Unknown',
+            'date' => $appointment->appointment_start_datetime?->format('l, F j, Y') ?? 'No date',
+            'time' => $appointment->appointment_start_datetime?->format('g:i A') ?? 'No time',
+            'treatments' => $appointment->treatmentTypes?->pluck('name')->join(', ') ?? 'N/A',
+            'purpose' => $appointment->purpose_of_appointment,
+        ];
+    }
+
     /**
      * Find the next scheduled appointment for a patient by name.
      *
@@ -23,7 +133,7 @@ class AppointmentService
         // Find patient(s) matching the name (case-insensitive, partial match)
         // Supports both individual name parts and full names (e.g., "Jane B. Smith")
         $searchTerm = '%' . strtolower($patientName) . '%';
-        
+
         $patients = Patient::query()
             ->where(function ($query) use ($searchTerm) {
                 // Search in concatenated full name using CONCAT_WS to avoid double spaces
@@ -81,7 +191,7 @@ class AppointmentService
     public function getAppointmentHistory(string $patientName, ?int $dentistId = null): array
     {
         $searchTerm = '%' . strtolower($patientName) . '%';
-        
+
         $patients = Patient::query()
             ->where(function ($query) use ($searchTerm) {
                 // Search in concatenated full name using CONCAT_WS to avoid double spaces
@@ -187,6 +297,81 @@ class AppointmentService
     }
 
     /**
+     * Get a dentist's schedule for a specific period.
+     * Supports today, week, month, or specific dates.
+     *
+     * @param int $dentistId The dentist's user ID
+     * @param string $period 'today', 'tomorrow', 'week', 'month', or a specific date
+     * @return array
+     */
+    public function getDentistSchedule(int $dentistId, string $period = 'today'): array
+    {
+        $now = now();
+        $startDate = $now->copy()->startOfDay();
+        $endDate = $now->copy()->endOfDay();
+        $periodLabel = $period;
+
+        switch (strtolower($period)) {
+            case 'today':
+                // Defaults are already set for today
+                break;
+            case 'tomorrow':
+                $startDate = $now->copy()->addDay()->startOfDay();
+                $endDate = $now->copy()->addDay()->endOfDay();
+                break;
+            case 'week':
+            case 'this week':
+                $startDate = $now->copy()->startOfWeek();
+                $endDate = $now->copy()->endOfWeek();
+                $periodLabel = 'this week';
+                break;
+            case 'month':
+            case 'this month':
+                $startDate = $now->copy()->startOfMonth();
+                $endDate = $now->copy()->endOfMonth();
+                $periodLabel = 'this month';
+                break;
+            case 'next week':
+                $startDate = $now->copy()->addWeek()->startOfWeek();
+                $endDate = $now->copy()->addWeek()->endOfWeek();
+                break;
+            default:
+                // Try to parse specific date
+                try {
+                    $parsedDate = \Carbon\Carbon::parse($period);
+                    $startDate = $parsedDate->copy()->startOfDay();
+                    $endDate = $parsedDate->copy()->endOfDay();
+                    $periodLabel = $startDate->format('F j, Y');
+                } catch (\Exception $e) {
+                    // Fallback to today if parsing fails
+                }
+        }
+
+        $appointments = Appointment::query()
+            ->where('dentist_id', $dentistId)
+            ->whereBetween('appointment_start_datetime', [$startDate, $endDate])
+            ->with(['patient', 'treatmentTypes'])
+            ->orderBy('appointment_start_datetime')
+            ->get()
+            ->map(function ($appt) {
+                return [
+                    'date' => $appt->appointment_start_datetime?->format('M j, Y (D)') ?? 'No date',
+                    'time' => $appt->appointment_start_datetime?->format('g:i A') ?? 'No time',
+                    'patient_name' => $appt->patient?->name ?? 'Unknown',
+                    'status' => $appt->status,
+                    'treatments' => $appt->treatmentTypes?->pluck('name')->join(', ') ?? '',
+                    'purpose' => $appt->purpose_of_appointment,
+                ];
+            });
+
+        return [
+            'period' => $periodLabel,
+            'count' => $appointments->count(),
+            'appointments' => $appointments->toArray(),
+        ];
+    }
+
+    /**
      * Get all unique patients assigned to a dentist.
      *
      * @param int $dentistId The dentist's ID
@@ -203,7 +388,7 @@ class AppointmentService
                 $appointmentCount = Appointment::where('patient_id', $appt->patient_id)
                     ->where('dentist_id', $dentistId)
                     ->count();
-                
+
                 $lastAppointment = Appointment::where('patient_id', $appt->patient_id)
                     ->where('dentist_id', $dentistId)
                     ->where('status', 'Completed')
@@ -214,7 +399,7 @@ class AppointmentService
                     'name' => $appt->patient?->name ?? 'Unknown',
                     'contact' => $appt->patient?->contact_number ?? 'N/A',
                     'total_appointments' => $appointmentCount,
-                    'last_visit' => $lastAppointment?->appointment_start_datetime 
+                    'last_visit' => $lastAppointment?->appointment_start_datetime
                         ? $lastAppointment->appointment_start_datetime->format('M j, Y')
                         : 'No visits yet',
                 ];
@@ -234,7 +419,7 @@ class AppointmentService
     public function getPatientsByDentistName(string $dentistName): array
     {
         $searchTerm = '%' . strtolower($dentistName) . '%';
-        
+
         // Find dentist(s) matching the name
         $dentists = \App\Models\User::query()
             ->where('role_id', 2) // Dentist role
@@ -264,12 +449,12 @@ class AppointmentService
                     ->where('dentist_id', $dentistId)
                     ->where('status', 'Scheduled')
                     ->count();
-                    
+
                 $completedCount = Appointment::where('patient_id', $appt->patient_id)
                     ->where('dentist_id', $dentistId)
                     ->where('status', 'Completed')
                     ->count();
-                
+
                 $lastAppointment = Appointment::where('patient_id', $appt->patient_id)
                     ->where('dentist_id', $dentistId)
                     ->latest('appointment_start_datetime')
@@ -280,7 +465,7 @@ class AppointmentService
                     'contact' => $appt->patient?->contact_number ?: 'N/A',
                     'scheduled' => $scheduledCount,
                     'completed' => $completedCount,
-                    'last_appointment' => $lastAppointment?->appointment_start_datetime 
+                    'last_appointment' => $lastAppointment?->appointment_start_datetime
                         ? $lastAppointment->appointment_start_datetime->format('M j, Y')
                         : 'N/A',
                 ];
@@ -422,7 +607,7 @@ class AppointmentService
     public function findNextAvailableSlot(string $dentistName, string $period = 'week'): array
     {
         $searchTerm = '%' . strtolower($dentistName) . '%';
-        
+
         // Find the dentist
         $dentist = \App\Models\User::query()
             ->where('role_id', 2)
@@ -444,7 +629,7 @@ class AppointmentService
         // Determine date range
         $now = now();
         $startDate = $now->copy()->startOfDay();
-        $endDate = match(strtolower($period)) {
+        $endDate = match (strtolower($period)) {
             'today' => $now->copy()->endOfDay(),
             'tomorrow' => $now->copy()->addDay()->endOfDay(),
             'week', 'this week' => $now->copy()->endOfWeek(),
@@ -630,7 +815,7 @@ class AppointmentService
     public function getPatientTreatmentHistory(string $patientName, ?int $dentistId = null): array
     {
         $searchTerm = '%' . strtolower($patientName) . '%';
-        
+
         $patients = Patient::query()
             ->where(function ($query) use ($searchTerm) {
                 $query->whereRaw("CONCAT_WS(' ', LOWER(fname), NULLIF(LOWER(mname), ''), LOWER(lname)) LIKE ?", [$searchTerm])
@@ -758,7 +943,7 @@ class AppointmentService
     public function getPatientDetails(string $patientName): array
     {
         $searchTerm = '%' . strtolower($patientName) . '%';
-        
+
         $patient = Patient::query()
             ->where(function ($query) use ($searchTerm) {
                 $query->whereRaw("CONCAT_WS(' ', LOWER(fname), NULLIF(LOWER(mname), ''), LOWER(lname)) LIKE ?", [$searchTerm])
@@ -792,22 +977,22 @@ class AppointmentService
                 'email' => $patient->email,
                 'contact' => $patient->contact_number ?: 'N/A',
                 'gender' => $patient->gender,
-                'date_of_birth' => $patient->date_of_birth 
-                    ? \Carbon\Carbon::parse($patient->date_of_birth)->format('F j, Y') 
+                'date_of_birth' => $patient->date_of_birth
+                    ? \Carbon\Carbon::parse($patient->date_of_birth)->format('F j, Y')
                     : 'Unknown',
-                'age' => $patient->date_of_birth 
-                    ? \Carbon\Carbon::parse($patient->date_of_birth)->age . ' years old' 
+                'age' => $patient->date_of_birth
+                    ? \Carbon\Carbon::parse($patient->date_of_birth)->age . ' years old'
                     : 'Unknown',
                 'address' => $patient->address,
             ],
             'statistics' => [
                 'total_appointments' => $totalAppointments,
                 'completed_appointments' => $completedAppointments,
-                'last_visit' => $lastVisit?->appointment_start_datetime 
-                    ? $lastVisit->appointment_start_datetime->format('M j, Y') 
+                'last_visit' => $lastVisit?->appointment_start_datetime
+                    ? $lastVisit->appointment_start_datetime->format('M j, Y')
                     : 'Never',
-                'next_appointment' => $nextAppointment?->appointment_start_datetime 
-                    ? $nextAppointment->appointment_start_datetime->format('M j, Y g:i A') 
+                'next_appointment' => $nextAppointment?->appointment_start_datetime
+                    ? $nextAppointment->appointment_start_datetime->format('M j, Y g:i A')
                     : 'None scheduled',
             ],
         ];
@@ -908,8 +1093,8 @@ class AppointmentService
             'date_range' => $dateRange,
             'total_revenue' => '₱' . number_format($totalRevenue, 2),
             'completed_appointments' => $appointmentCount,
-            'average_per_appointment' => $appointmentCount > 0 
-                ? '₱' . number_format($totalRevenue / $appointmentCount, 2) 
+            'average_per_appointment' => $appointmentCount > 0
+                ? '₱' . number_format($totalRevenue / $appointmentCount, 2)
                 : '₱0.00',
             'top_revenue_treatments' => $treatmentBreakdown->map(function ($t) {
                 return [
@@ -998,7 +1183,7 @@ class AppointmentService
     public function getTreatmentNotes(string $patientName, ?int $dentistId = null): array
     {
         $searchTerm = '%' . strtolower($patientName) . '%';
-        
+
         $patients = Patient::query()
             ->where(function ($query) use ($searchTerm) {
                 $query->whereRaw("CONCAT_WS(' ', LOWER(fname), NULLIF(LOWER(mname), ''), LOWER(lname)) LIKE ?", [$searchTerm])
@@ -1065,8 +1250,8 @@ class AppointmentService
     public function getUpcomingBusyPeriods(string $period = 'week'): array
     {
         $now = now();
-        $endDate = strtolower($period) === 'month' 
-            ? $now->copy()->endOfMonth() 
+        $endDate = strtolower($period) === 'month'
+            ? $now->copy()->endOfMonth()
             : $now->copy()->endOfWeek();
 
         $appointments = Appointment::query()
@@ -1167,8 +1352,8 @@ class AppointmentService
             'found' => true,
             'count' => $patients->count(),
             'patients' => $patients->map(function ($p) {
-                $age = $p->date_of_birth 
-                    ? \Carbon\Carbon::parse($p->date_of_birth)->age 
+                $age = $p->date_of_birth
+                    ? \Carbon\Carbon::parse($p->date_of_birth)->age
                     : 'Unknown';
                 return [
                     'name' => $p->name,
@@ -1208,10 +1393,10 @@ class AppointmentService
         $ages = [];
         foreach ($patients as $patient) {
             if (!$patient->date_of_birth) continue;
-            
+
             $age = \Carbon\Carbon::parse($patient->date_of_birth)->age;
             $ages[] = $age;
-            
+
             if ($age <= 12) $groups['0-12 (Children)']++;
             elseif ($age <= 17) $groups['13-17 (Teens)']++;
             elseif ($age <= 30) $groups['18-30 (Young Adults)']++;
@@ -1242,7 +1427,7 @@ class AppointmentService
     {
         // Clean up the identifier - remove # symbol if present
         $cleanIdentifier = str_replace('#', '', trim($toothIdentifier));
-        
+
         $tooth = \App\Models\Tooth::where('name', 'ilike', "%{$cleanIdentifier}%")->first();
 
         if (!$tooth) {
@@ -1252,7 +1437,7 @@ class AppointmentService
         $query = \App\Models\TreatmentRecord::whereHas('teeth', function ($q) use ($tooth) {
             $q->where('teeth.id', $tooth->id);
         })
-        ->with(['treatmentType', 'appointment.patient', 'appointment.dentist']);
+            ->with(['treatmentType', 'appointment.patient', 'appointment.dentist']);
 
         if ($dentistId) {
             $query->whereHas('appointment', fn($q) => $q->where('dentist_id', $dentistId));
@@ -1273,7 +1458,7 @@ class AppointmentService
                 if ($r->appointment && $r->appointment->appointment_start_datetime) {
                     $date = $r->appointment->appointment_start_datetime->format('M j, Y');
                 }
-                
+
                 return [
                     'date' => $date,
                     'treatment' => $r->treatmentType->name ?? 'Unknown',
@@ -1364,12 +1549,12 @@ class AppointmentService
         $patients = $query->get()->filter(function ($patient) use ($now, $endDate) {
             $birthday = \Carbon\Carbon::parse($patient->date_of_birth);
             $thisYearBirthday = $birthday->copy()->year($now->year);
-            
+
             // Handle year boundary
             if ($thisYearBirthday->lt($now)) {
                 $thisYearBirthday->addYear();
             }
-            
+
             return $thisYearBirthday->between($now, $endDate);
         })->values();
 
@@ -1385,7 +1570,7 @@ class AppointmentService
                 $birthday = \Carbon\Carbon::parse($p->date_of_birth);
                 $thisYearBirthday = $birthday->copy()->year($now->year);
                 if ($thisYearBirthday->lt($now)) $thisYearBirthday->addYear();
-                
+
                 return [
                     'name' => $p->name,
                     'birthday' => $thisYearBirthday->format('M j'),
@@ -1434,8 +1619,8 @@ class AppointmentService
                 'completed' => $completed,
                 'scheduled' => $scheduled,
                 'cancelled' => $cancelled,
-                'completion_rate' => $appointments->count() > 0 
-                    ? round(($completed / $appointments->count()) * 100, 1) . '%' 
+                'completion_rate' => $appointments->count() > 0
+                    ? round(($completed / $appointments->count()) * 100, 1) . '%'
                     : 'N/A',
             ];
         })->sortByDesc('total_appointments')->values();
@@ -1450,4 +1635,3 @@ class AppointmentService
         ];
     }
 }
-

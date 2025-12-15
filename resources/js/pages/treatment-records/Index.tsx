@@ -91,6 +91,13 @@ export default function Index({ records, dentists, treatmentTypes, filters }: In
 
     const columns = [
         {
+            accessorKey: 'appointment_id',
+            header: 'Appt ID',
+            cell: ({ row }: { row: { original: TreatmentRecordItem } }) => (
+                <span className="text-muted-foreground">#{row.original.appointment_id}</span>
+            ),
+        },
+        {
             accessorKey: 'patient_name',
             header: 'Patient',
             cell: ({ row }: { row: { original: TreatmentRecordItem } }) => (

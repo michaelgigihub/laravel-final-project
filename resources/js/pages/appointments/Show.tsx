@@ -36,6 +36,7 @@ interface TreatmentType {
     id: number;
     name: string;
     standard_cost: number;
+    is_per_tooth: boolean;
 }
 
 interface FileRecord {
@@ -56,6 +57,7 @@ interface TreatmentRecord {
     treatment_notes: string | null;
     files: FileRecord[];
     teeth: Tooth[];
+    price: number;
     created_at: string;
 }
 
@@ -76,6 +78,7 @@ interface Appointment {
     purpose_of_appointment: string | null;
     cancellation_reason: string | null;
     treatment_records: TreatmentRecord[];
+    total_amount: number;
     created_at: string;
 }
 
@@ -269,62 +272,89 @@ export default function ShowAppointment({ appointment }: ShowAppointmentProps) {
                     </CardHeader>
                     <CardContent>
                         {appointment.treatment_records.length > 0 ? (
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Treatment</TableHead>
-                                        <TableHead>Notes</TableHead>
-                                        <TableHead>Teeth</TableHead>
-                                        <TableHead className="text-center">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {appointment.treatment_records.map((record) => (
-                                        <TableRow key={record.id}>
-                                            <TableCell className="font-medium">
-                                                {record.treatment_type?.name || 'Unknown'}
-                                            </TableCell>
-                                            <TableCell className="max-w-[200px] truncate">
-                                                {record.treatment_notes || '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {record.teeth.length > 0
-                                                    ? record.teeth.map((t) => t.name).join(', ')
-                                                    : '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex justify-center">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" className="h-8 w-8 p-0">
-                                                                <span className="sr-only">Open menu</span>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end">
-                                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                                            {isScheduled && (
+                            <>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Treatment</TableHead>
+                                            <TableHead>Notes</TableHead>
+                                            <TableHead>Teeth</TableHead>
+                                            <TableHead className="text-right">Price</TableHead>
+                                            <TableHead className="text-center">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {appointment.treatment_records.map((record) => (
+                                            <TableRow key={record.id}>
+                                                <TableCell className="font-medium">
+                                                    {record.treatment_type?.name || 'Unknown'}
+                                                </TableCell>
+                                                <TableCell className="max-w-[200px] truncate">
+                                                    {record.treatment_notes || '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {record.teeth.length > 0
+                                                        ? record.teeth.map((t) => `${t.id}. ${t.name}`).join(', ')
+                                                        : '-'}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    {record.treatment_type?.standard_cost != null ? (
+                                                        <div className="flex flex-col items-end">
+                                                            <span>₱{record.price.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span>
+                                                            {record.treatment_type?.is_per_tooth && record.teeth.length > 0 && (
+                                                                <span className="text-xs text-muted-foreground">
+                                                                    (₱{Number(record.treatment_type.standard_cost).toLocaleString('en-PH', { minimumFractionDigits: 2 })} × {record.teeth.length} teeth)
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : '-'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex justify-center">
+                                                        <DropdownMenu>
+                                                            <DropdownMenuTrigger asChild>
+                                                                <Button variant="ghost" className="h-8 w-8 p-0">
+                                                                    <span className="sr-only">Open menu</span>
+                                                                    <MoreHorizontal className="h-4 w-4" />
+                                                                </Button>
+                                                            </DropdownMenuTrigger>
+                                                            <DropdownMenuContent align="end">
+                                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                                {isScheduled && (
+                                                                    <DropdownMenuItem asChild>
+                                                                        <Link href={`/appointments/${appointment.id}/treatment-records/${record.id}?edit=true`}>
+                                                                            <Pencil className="mr-2 h-4 w-4" />
+                                                                            Edit Record
+                                                                        </Link>
+                                                                    </DropdownMenuItem>
+                                                                )}
                                                                 <DropdownMenuItem asChild>
-                                                                    <Link href={`/appointments/${appointment.id}/treatment-records/${record.id}?edit=true`}>
-                                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                                        Edit Record
+                                                                    <Link href={`/appointments/${appointment.id}/treatment-records/${record.id}`}>
+                                                                        <ClipboardList className="mr-2 h-4 w-4" />
+                                                                        View Details
                                                                     </Link>
                                                                 </DropdownMenuItem>
-                                                            )}
-                                                            <DropdownMenuItem asChild>
-                                                                <Link href={`/appointments/${appointment.id}/treatment-records/${record.id}`}>
-                                                                    <ClipboardList className="mr-2 h-4 w-4" />
-                                                                    View Details
-                                                                </Link>
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                            </DropdownMenuContent>
+                                                        </DropdownMenu>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        <TableRow className="bg-muted/50 hover:bg-muted/50">
+                                            <TableCell colSpan={3} />
+                                            <TableCell className="text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <span className="font-medium text-muted-foreground whitespace-nowrap">Total Amount:</span>
+                                                    <span className="font-bold text-lg">
+                                                        ₱{appointment.total_amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                                                    </span>
                                                 </div>
                                             </TableCell>
+                                            <TableCell></TableCell>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+                                    </TableBody>
+                                </Table>
+                            </>
                         ) : (
                             <div className="flex flex-col items-center justify-center py-8 text-center">
                                 <ClipboardList className="size-12 text-muted-foreground/50 mb-2" />

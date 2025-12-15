@@ -13,6 +13,7 @@ use App\Models\TreatmentRecord;
 use App\Models\TreatmentType;
 use App\Models\User;
 use App\Services\AdminAuditService;
+use App\Services\PricingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -20,7 +21,8 @@ use Inertia\Inertia;
 class AppointmentController extends Controller
 {
     public function __construct(
-        protected AdminAuditService $auditService
+        protected AdminAuditService $auditService,
+        protected PricingService $pricingService
     ) {}
     /**
      * Display a listing of appointments (calendar view).
@@ -32,7 +34,9 @@ class AppointmentController extends Controller
         $query = Appointment::with([
             'patient:id,fname,mname,lname',
             'dentist:id,fname,mname,lname',
-            'treatmentTypes:id,name'
+            'treatmentTypes:id,name',
+            'treatmentRecords.treatmentType:id,name,standard_cost,is_per_tooth',
+            'treatmentRecords.teeth:id',
         ]);
 
         // If user is a dentist (role_id = 2), only show their assigned appointments
@@ -79,6 +83,9 @@ class AppointmentController extends Controller
 
         $appointments = $query->orderBy('appointment_start_datetime', 'desc')->get()
             ->map(function ($appointment) {
+                // Calculate total amount using PricingService
+                $totalAmount = $this->pricingService->calculateTotalPrice($appointment->treatmentRecords);
+
                 return [
                     'id' => $appointment->id,
                     'patient_id' => $appointment->patient_id,
@@ -92,6 +99,7 @@ class AppointmentController extends Controller
                     'status' => $appointment->status,
                     'purpose_of_appointment' => $appointment->purpose_of_appointment,
                     'treatment_types' => $appointment->treatmentTypes->pluck('name')->join(', '),
+                    'total_amount' => $totalAmount,
                 ];
             });
 
@@ -201,6 +209,27 @@ class AppointmentController extends Controller
         // Get all teeth for treatment record editing
         $allTeeth = \App\Models\Tooth::orderBy('id')->get(['id', 'name']);
 
+        // Pre-calculate prices for each treatment record
+        $treatmentRecords = $appointment->treatmentRecords->map(function ($record) {
+            return [
+                'id' => $record->id,
+                'treatment_type' => $record->treatmentType,
+                'treatment_notes' => $record->treatment_notes,
+                'files' => $record->files->map(fn($file) => [
+                    'id' => $file->id,
+                    'file_path' => $file->file_path,
+                    'original_name' => $file->original_name,
+                    'url' => asset('storage/' . $file->file_path),
+                ]),
+                'teeth' => $record->teeth,
+                'price' => $this->pricingService->calculateTreatmentPrice($record),
+                'created_at' => $record->created_at?->format('Y-m-d H:i'),
+            ];
+        });
+
+        // Calculate total amount
+        $totalAmount = $this->pricingService->calculateTotalPrice($appointment->treatmentRecords);
+
         return Inertia::render('appointments/Show', [
             'appointment' => [
                 'id' => $appointment->id,
@@ -211,21 +240,8 @@ class AppointmentController extends Controller
                 'status' => $appointment->status,
                 'purpose_of_appointment' => $appointment->purpose_of_appointment,
                 'cancellation_reason' => $appointment->cancellation_reason,
-                'treatment_records' => $appointment->treatmentRecords->map(function ($record) {
-                    return [
-                        'id' => $record->id,
-                        'treatment_type' => $record->treatmentType,
-                        'treatment_notes' => $record->treatment_notes,
-                        'files' => $record->files->map(fn($file) => [
-                            'id' => $file->id,
-                            'file_path' => $file->file_path,
-                            'original_name' => $file->original_name,
-                            'url' => asset('storage/' . $file->file_path),
-                        ]),
-                        'teeth' => $record->teeth,
-                        'created_at' => $record->created_at?->format('Y-m-d H:i'),
-                    ];
-                }),
+                'treatment_records' => $treatmentRecords,
+                'total_amount' => $totalAmount,
                 'created_at' => $appointment->created_at?->format('Y-m-d H:i'),
             ],
             'treatmentTypes' => $treatmentTypes,

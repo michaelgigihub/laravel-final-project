@@ -182,7 +182,7 @@ export default function EditTreatmentRecord({
                                             htmlFor={`tooth-${tooth.id}`}
                                             className="text-xs font-medium cursor-pointer"
                                         >
-                                            {tooth.name}
+                                            {tooth.id}. {tooth.name}
                                         </label>
                                     </div>
                                 ))}

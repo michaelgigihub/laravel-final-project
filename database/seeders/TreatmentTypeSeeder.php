@@ -9,6 +9,12 @@ class TreatmentTypeSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * 
+     * Per-tooth pricing (is_per_tooth = true):
+     *   - Fillings, Extractions, Crowns, Root Canals, Dental Implants
+     * 
+     * Flat-rate pricing (is_per_tooth = false):
+     *   - Cleanings, Consultations
      */
     public function run(): void
     {
@@ -19,6 +25,7 @@ class TreatmentTypeSeeder extends Seeder
                 'standard_cost' => 150.00,
                 'duration_minutes' => 60,
                 'is_active' => true,
+                'is_per_tooth' => false, // Flat rate per session
             ],
             [
                 'name' => 'Tooth Filling',
@@ -26,6 +33,7 @@ class TreatmentTypeSeeder extends Seeder
                 'standard_cost' => 200.00,
                 'duration_minutes' => 45,
                 'is_active' => true,
+                'is_per_tooth' => true, // Priced per tooth
             ],
             [
                 'name' => 'Root Canal',
@@ -33,6 +41,7 @@ class TreatmentTypeSeeder extends Seeder
                 'standard_cost' => 800.00,
                 'duration_minutes' => 90,
                 'is_active' => true,
+                'is_per_tooth' => true, // Priced per tooth
             ],
             [
                 'name' => 'Dental Crown',
@@ -40,6 +49,7 @@ class TreatmentTypeSeeder extends Seeder
                 'standard_cost' => 1200.00,
                 'duration_minutes' => 120,
                 'is_active' => true,
+                'is_per_tooth' => true, // Priced per tooth
             ],
             [
                 'name' => 'Tooth Extraction',
@@ -47,6 +57,7 @@ class TreatmentTypeSeeder extends Seeder
                 'standard_cost' => 150.00,
                 'duration_minutes' => 30,
                 'is_active' => true,
+                'is_per_tooth' => true, // Priced per tooth
             ],
             [
                 'name' => 'Orthodontic Consultation',
@@ -54,6 +65,7 @@ class TreatmentTypeSeeder extends Seeder
                 'standard_cost' => 100.00,
                 'duration_minutes' => 45,
                 'is_active' => true,
+                'is_per_tooth' => false, // Flat rate consultation
             ],
             [
                 'name' => 'Dental Implant',
@@ -61,6 +73,7 @@ class TreatmentTypeSeeder extends Seeder
                 'standard_cost' => 2500.00,
                 'duration_minutes' => 180,
                 'is_active' => true,
+                'is_per_tooth' => true, // Priced per implant/tooth
             ],
         ]);
     }

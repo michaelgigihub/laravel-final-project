@@ -37,6 +37,7 @@ interface Appointment {
     status: 'Scheduled' | 'Completed' | 'Cancelled';
     purpose_of_appointment: string | null;
     treatment_types: string;
+    total_amount: number;
 }
 
 interface Person {
@@ -127,6 +128,11 @@ export default function AppointmentsIndex({ appointments, filters }: Appointment
     // DataTable columns
     const columns = [
         {
+            accessorKey: 'id',
+            header: 'ID',
+            cell: ({ row }: { row: { original: Appointment } }) => <span className="text-muted-foreground">#{row.original.id}</span>,
+        },
+        {
             accessorKey: 'appointment_start_datetime',
             header: 'Date & Time',
             cell: ({ row }: { row: { original: Appointment } }) => (
@@ -148,6 +154,15 @@ export default function AppointmentsIndex({ appointments, filters }: Appointment
                 <div className="max-w-[200px] truncate" title={row.original.treatment_types}>
                     {row.original.treatment_types || '-'}
                 </div>
+            ),
+        },
+        {
+            accessorKey: 'total_amount',
+            header: 'Total',
+            cell: ({ row }: { row: { original: Appointment } }) => (
+                <span className="font-medium">
+                    ₱{row.original.total_amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+                </span>
             ),
         },
         {
